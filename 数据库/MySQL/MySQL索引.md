@@ -88,7 +88,7 @@ https://segmentfault.com/a/1190000037683781
 
 ①哈希索引：按索引字段进行哈希，哈希地址存的是数据地址
 
-②B树索引：书中的节点id进行排序，id地址存的是数据地址
+②B树索引：树中的节点id进行排序，id地址存的是数据地址
 
 1、把创建了索引的列的内容进行==排序==
 
@@ -219,7 +219,7 @@ https://flying-veal.notion.site/select-from-A-join-B-on-A-id-B-id-ae3fecdfc52346
 
 
 
-## 13.介绍下 SQL 优化的方法
+## 13.介绍下 SQL 优化的方法	
 
 https://flying-veal.notion.site/SQL-join-order-by-4940a2ac28fa49eab58a0362a69e2c7d
 
@@ -232,3 +232,4 @@ https://flying-veal.notion.site/SQL-join-order-by-4940a2ac28fa49eab58a0362a69e2c
 - 分解大连接查询
 
 - 小表驱动大表
+
