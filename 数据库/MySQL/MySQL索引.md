@@ -102,9 +102,24 @@ https://segmentfault.com/a/1190000037683781
 
 ## 6.存储引擎
 
-MyISAM 和 Innodb 的默认索引类型都是 B+ 树，Memory 默认的索引类型是 Hash 索引
+MyISAM 和 InnoDB的默认索引类型都是 B+ 树，Memory 默认的索引类型是 Hash 索引
 
-[MyIsam和InnoDb两个搜索引擎的区别](https://www.cnblogs.com/kevingrace/p/5685355.html)
+### Memory
+
+所有的数据存储在内存中，每个基于 Memory 创建的表实际对应一个磁盘文件，只存储表结构，而不存储数据文件。由于是基于内存的，因此 MySQL 进程关闭后数据就会消失
+
+### MyIsam和InnoDB两个搜索引擎的区别
+
+- 事务: MyISAM 不支持事务，而 InnoDB 支持事务。
+- 并发: MyISAM 只支持表级锁，进行读操作时会加共享锁，写操作时则会加排它锁。在进行读操作时，可以通过并发插入来插入新的记录；而 InnoDB 支持表级锁和行级锁。
+- 外键: MyISAM 不支持外键，而 InnoDB 支持外键。
+- 崩溃恢复: MyISAM强调性能，但MyISAM 崩溃后发生损坏的概率比 InnoDB 高很多，而且恢复的速度也更慢。
+- MVCC(多版本并发控制): 只有InnoDB 支持。
+
+### 如何选择 MyISAM 和 InnoDB
+
+- 如果需要执行大量的SELECT查询，那么可以考虑使用 MyISAM；如果需要执行大量的INSERT或UPDATE操作，则应该使用InnoDB，这样可以提高多用户并发操作的性能。
+- 读写分离场景下，读数据库可以使用 MyISAM；写数据库则使用 InnoDB
 
 
 
