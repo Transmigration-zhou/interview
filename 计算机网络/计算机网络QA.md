@@ -2,7 +2,7 @@
 
 ## OSI 七层模型、TCP/IP模型
 
-![img](https://gitee.com/Transmigration_zhou/pic/raw/master/img/20220310190501.jpg)
+![img](https://gitee.com/Transmigration_zhou/pic/raw/master/img/20220315122533.png)
 
 - 物理层：底层数据传输，如网线；网卡标准。
 - 数据链路层：定义数据的基本格式，如何传输，如何标识；如网卡MAC地址。
@@ -74,6 +74,8 @@ https://www.acwing.com/blog/content/7861/
 ### TCP 四次挥手释放连接
 
 ![img](https://gitee.com/Transmigration_zhou/pic/raw/master/img/20220309234950.png)
+
+0）初始状态：刚开始双方都处于`ESTABLISHED`状态。假如是客户端先发起关闭请求。
 
 1）第一次挥手：客户端发送一个 FIN 报文（请求连接终止：FIN = 1），报文中会指定一个序列号 seq = u。并**停止再发送数据，主动关闭 TCP 连接**。此时客户端处于 `FIN_WAIT1` 状态，等待服务端的确认。
 
@@ -205,8 +207,6 @@ session 是另一种记录服务器和客户端会话状态的机制。session �
 
 2、存储的数据类型不同。Cookie 只支持存字符串数据，想要设置其他类型的数据，需要将其转换成字符串，Session 可以存任意数据类型。
 
-Cookie的安全性一般，他人可通过分析存放在本地的Cookie并进行Cookie欺骗。在安全性第一的前提下，选择Session更优。重要交互信息比如权限等就要放在Session中，一般的信息记录放Cookie就好了。
-
 3、安全性不同。Session 比 Cookie 安全。
 
 4、存储大小不同。Cookie大小受浏览器的限制，一般单个Cookie保存的数据不能超过4K。Session 可存储数据远高于 Cookie，但是当访问量过多，会占用过多的服务器资源。
@@ -248,9 +248,64 @@ Cookie的安全性一般，他人可通过分析存放在本地的Cookie并进�
 - **400 Bad Request** ：请求报文中存在语法错误。
 - **401 Unauthorized** ：该状态码表示发送的请求需要有认证信息（BASIC 认证、DIGEST 认证）。如果之前已进行过一次请求，则表示用户认证失败。
 - **403 Forbidden** ：请求被拒绝。
-- **404 Not Found**
+- **404 Not Found**：请求资源不存在。比如，输入了错误的 URL。
+- **415 Unsupported media type**：不支持的媒体类型。
 
 ##### 5xx 服务器错误
 
 - **500 Internal Server Error** ：服务器正在执行请求时发生错误。
 - **503 Service Unavailable** ：服务器暂时处于超负载或正在进行停机维护，现在无法处理请求。
+
+
+
+## ICMP协议 Ping Traceroute
+
+https://zhuanlan.zhihu.com/p/116902722
+
+### Ping 原理
+
+Ping 的原理是 ICMP 协议。
+
+- 客户端：向服务端发送ICMP回显请求报文（echo message）。
+- 服务端：向客户端返回ICMP回西显响应报文（echo reply message）。
+
+![img](https://gitee.com/Transmigration_zhou/pic/raw/master/img/20220317130056.jpg)
+
+### ICMP 协议的格式
+
+ICMP 包头的**类型**字段，大致可以分为两大类：
+
+- 一类是用于诊断的查询消息，也就是「**查询报文类型**」
+- 另一类是通知出错原因的错误消息，也就是「**差错报文类型**」
+
+![img](https://gitee.com/Transmigration_zhou/pic/raw/master/img/20220317130156)
+
+### Traceroute（路由追踪） 原理
+
+https://zhuanlan.zhihu.com/p/404043710
+
+traceroute的实现原理，有两种方法：1、基于UDP报文实现；2、基于ICMP报文实现。
+
+### 基于UDP报文实现
+
+让你在客户端输入 traceroute 命令+ip时， 客户端就发起一个UDP报文，使用一个大于30000的端口号（选这么端口号，目的端一般都是未使用，所以待会就收到一个端口不可达信息。）这样子，服务器端收到这个UDP报文后就会返回ICMP端口不可达的错误信息。同时，第一个数据包，TTL=1，这样第一跳路由器收到后,要转发出去时，会将TTL减一，即TTL=0, 就丢弃，然后第一跳路由器就返回一个ICMP超时的错误信息，所以，客户端通过判断收到ICMP端口不可达报文来确定数据包已到达目的地，如果是收到ICMP超时错误信息报文，说明还没到达目的地，就会将TTL加1，以此类推。
+
+<video id="video" controls=""src="https://vdn.vzuu.com/SD/439fed4a-06d7-11ec-9f4b-ba0fc80291c2.mp4?disable_local_cache=1&auth_key=1647497018-0-0-18cb4276de00ae3f857b3c65b509551f&f=mp4&bu=pico&expiration=1647497018&v=ali" preload="none">
+
+
+
+<video id="video" controls=""src="https://vdn1.vzuu.com/SD/80dda4c2-06d7-11ec-8c9c-3e117ea31dbf.mp4?disable_local_cache=1&auth_key=1647497052-0-0-3a2d3738c9569e5793a879f0261c42d6&f=mp4&bu=pico&expiration=1647497052&v=hw" preload="none">
+<video id="video" controls=""src="https://vdn1.vzuu.com/SD/9bdfbdb4-06d7-11ec-862e-06c1ba80f579.mp4?disable_local_cache=1&auth_key=1647497255-0-0-d82ab6a5e1d17137650baf8ad3256b07&f=mp4&bu=pico&expiration=1647497255&v=hw" preload="none">
+
+### 基于ICMP报文实现
+
+使用ICMP的**回显请求**和**回显应答**这两种报文
+
+让你在客户端输入 traceroute 命令+ip时， 客户端就发起一个ICMP回显请求报文，第一个数据包，TTL=1，这样第一跳路由器收到后,要转发出去时，会将TTL减一，即TTL=0, 就丢弃，然后第一跳路由器就返回一个ICMP超时的错误信息，客户端收到后，会判断是否收到ICMP 回显应答 报文？ 如果还没收到，就会继续发送回显请求报文，TTL加1进行尝试，当到底服务器后，服务器就会发送ICMP 回显应答报文。
+
+<video id="video" controls=""src="https://vdn.vzuu.com/SD/b9a54260-06d7-11ec-8986-3623b0d475ed.mp4?disable_local_cache=1&auth_key=1647497317-0-0-d707b8283a43432f13e97d1e57996e3e&f=mp4&bu=pico&expiration=1647497317&v=ali" preload="none">
+
+<video id="video" controls=""src="https://vdn3.vzuu.com/SD/f2ae763a-06d7-11ec-be9c-124d99edaad9.mp4?disable_local_cache=1&auth_key=1647497318-0-0-83e17d2acf927d5d4be7c9b0ef9c0f38&f=mp4&bu=pico&expiration=1647497318&v=tx" preload="none">
+
+<video id="video" controls=""src="https://vdn3.vzuu.com/SD/0cad36b6-06d8-11ec-882a-2aaab6ff7f5f.mp4?disable_local_cache=1&auth_key=1647497318-0-0-29e3f0a56160703897c257a461c896e4&f=mp4&bu=pico&expiration=1647497318&v=tx" preload="none">
+
