@@ -215,7 +215,29 @@ session 是另一种记录服务器和客户端会话状态的机制。session �
 
 
 
-## HTTP 状态码
+## 在浏览器中输入url地址后显示主页的过程
+
+- 根据域名，进行DNS域名解析；
+- 拿到解析的IP地址，建立TCP连接；
+- 向IP地址，发送HTTP请求；
+- 服务器处理请求并返回HTTP报文；
+- 关闭TCP连接；
+- 浏览器解析HTML渲染页面；
+
+
+
+## HTTP、HTTPS 
+
+### HTTP、HTTPS的区别
+
+1. http是明文传输，https是加密的安全传输
+2. http的端口默认是80，https的端口默认是443
+3. http是无状态的连接，https是ssl加密的传输，身份认证的网络协议。
+4. http的 URL 前缀是 `http://`，https的 URL 前缀是 `https://`
+5. https比http耗费更多服务器资源
+6. https协议要CA证书申请
+
+### HTTP状态码
 
 | 状态码 | 类别                             | 含义                       |
 | :----- | :------------------------------- | :------------------------- |
@@ -238,7 +260,7 @@ session 是另一种记录服务器和客户端会话状态的机制。session �
 ##### 3xx 重定向
 
 - **301 Moved Permanently** ：永久重定向，表示请求的资源已经永久的搬到了其他位置。
-- 。**302 Found** ：临时重定向，表示请求的资源临时搬到了其他位置
+- **302 Found** ：临时重定向，表示请求的资源临时搬到了其他位置
 - **303 See Other** ：临时重定向，应使用GET定向获取请求资源。303功能与302一样，区别只是303明确客户端应该使用GET访问。
 - **304 Not Modified** ：如果请求报文首部包含一些条件，例如：If-Match，If-Modified-Since，If-None-Match，If-Range，If-Unmodified-Since，如果不满足条件，则服务器会返回 304 状态码。
 - **307 Temporary Redirect** ：临时重定向，与 302 的含义类似，但是 307 要求浏览器不会把重定向请求的 POST 方法改成 GET 方法。
@@ -255,6 +277,20 @@ session 是另一种记录服务器和客户端会话状态的机制。session �
 
 - **500 Internal Server Error** ：服务器正在执行请求时发生错误。
 - **503 Service Unavailable** ：服务器暂时处于超负载或正在进行停机维护，现在无法处理请求。
+
+
+
+### HTTPS是如何保证数据传输的安全，整体的流程是什么？（SSL是怎么工作保证安全的）
+
+（1）客户端向服务器端发起SSL连接请求；
+
+（2）服务器把公钥发送给客户端，并且服务器端保存着唯一的私钥
+
+（3）客户端用公钥对双方通信的对称秘钥进行加密，并发送给服务器端 
+
+（4）服务器利用自己唯一的私钥对客户端发来的对称秘钥进行解密
+
+（5）进行数据传输，服务器和客户端双方用公有的相同的对称秘钥对数据进行加密解密，可以保证在数据收发过程中的安全，即是第三方获得数据包，也无法对其进行加密，解密和篡改。
 
 
 
@@ -303,9 +339,8 @@ traceroute的实现原理，有两种方法：1、基于UDP报文实现；2、�
 
 让你在客户端输入 traceroute 命令+ip时， 客户端就发起一个ICMP回显请求报文，第一个数据包，TTL=1，这样第一跳路由器收到后,要转发出去时，会将TTL减一，即TTL=0, 就丢弃，然后第一跳路由器就返回一个ICMP超时的错误信息，客户端收到后，会判断是否收到ICMP 回显应答 报文？ 如果还没收到，就会继续发送回显请求报文，TTL加1进行尝试，当到底服务器后，服务器就会发送ICMP 回显应答报文。
 
-<video id="video" controls=""src="https://vdn.vzuu.com/SD/b9a54260-06d7-11ec-8986-3623b0d475ed.mp4?disable_local_cache=1&auth_key=1647497317-0-0-d707b8283a43432f13e97d1e57996e3e&f=mp4&bu=pico&expiration=1647497317&v=ali" preload="none">
+<video id="video" controls=""src="https://vdn1.vzuu.com/SD/b9a54260-06d7-11ec-8986-3623b0d475ed.mp4?disable_local_cache=1&auth_key=1648440770-0-0-5229755277cc8be5dc6635bd11cc20b7&f=mp4&bu=pico&expiration=1648440770&v=hw" preload="none">
 
-<video id="video" controls=""src="https://vdn3.vzuu.com/SD/f2ae763a-06d7-11ec-be9c-124d99edaad9.mp4?disable_local_cache=1&auth_key=1647497318-0-0-83e17d2acf927d5d4be7c9b0ef9c0f38&f=mp4&bu=pico&expiration=1647497318&v=tx" preload="none">
+<video id="video" controls=""src="https://vdn1.vzuu.com/SD/f2ae763a-06d7-11ec-be9c-124d99edaad9.mp4?disable_local_cache=1&auth_key=1648440770-0-0-4cd8b67bb99ba8c272c7c06b74c073d8&f=mp4&bu=pico&expiration=1648440770&v=hw" preload="none">
 
-<video id="video" controls=""src="https://vdn3.vzuu.com/SD/0cad36b6-06d8-11ec-882a-2aaab6ff7f5f.mp4?disable_local_cache=1&auth_key=1647497318-0-0-29e3f0a56160703897c257a461c896e4&f=mp4&bu=pico&expiration=1647497318&v=tx" preload="none">
-
+<video id="video" controls=""src="https://vdn.vzuu.com/SD/0cad36b6-06d8-11ec-882a-2aaab6ff7f5f.mp4?disable_local_cache=1&auth_key=1648440771-0-0-d9111dca3b63915479a22960b3a3b639&f=mp4&bu=pico&expiration=1648440771&v=ali" preload="none">
