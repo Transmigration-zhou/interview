@@ -1,4 +1,14 @@
-## HashMap和Hashtable的区别
+![img](https://gitee.com/Transmigration_zhou/pic/raw/master/img/20220330152143.png)
+
+## List
+
+### ArrayList
+
+
+
+
+
+### HashMap和Hashtable的区别
 
 HashMap是Hashtable的轻量级实现
 
