@@ -282,7 +282,7 @@ session 是另一种记录服务器和客户端会话状态的机制。session �
 
 ### HTTPS是如何保证数据传输的安全，整体的流程是什么？（SSL是怎么工作保证安全的）
 
-（1）客户端向服务器端发起SSL连接请求；
+（1）客户端向服务器端发起SSL连接请求
 
 （2）服务器把公钥发送给客户端，并且服务器端保存着唯一的私钥
 
@@ -290,7 +290,23 @@ session 是另一种记录服务器和客户端会话状态的机制。session �
 
 （4）服务器利用自己唯一的私钥对客户端发来的对称秘钥进行解密
 
-（5）进行数据传输，服务器和客户端双方用公有的相同的对称秘钥对数据进行加密解密，可以保证在数据收发过程中的安全，即是第三方获得数据包，也无法对其进行加密，解密和篡改。
+进行数据传输，服务器和客户端双方用公有的相同的对称秘钥对数据进行加密解密，可以保证在数据收发过程中的安全，即是第三方获得数据包，也无法对其进行加密，解密和篡改。
+
+
+
+### HTTPS中数字认证流程
+
+https://www.cnblogs.com/fengf233/p/11775415.html
+
+由于公钥在下发的时候也容易被替换劫持，所以需要个第三方认证机构确认公钥的正确性
+
+CA：数字证书认证机构，是客户端服务端都认可的第三方机构，负责数字签名服务端公钥
+
+数字签名：签名就是一种证明身份的机制，是一种校验机制（简单说是用私钥加密内容的hash,公钥解密对比hash判断内容是否完整）
+
+数字证书：由一个可信的组织验证和签发的识别信息
+
+![img](https://gitee.com/Transmigration_zhou/pic/raw/master/img/20220329123703.png)
 
 
 
@@ -330,6 +346,7 @@ traceroute的实现原理，有两种方法：1、基于UDP报文实现；2、�
 
 
 
+
 <video id="video" controls=""src="https://vdn1.vzuu.com/SD/80dda4c2-06d7-11ec-8c9c-3e117ea31dbf.mp4?disable_local_cache=1&auth_key=1647497052-0-0-3a2d3738c9569e5793a879f0261c42d6&f=mp4&bu=pico&expiration=1647497052&v=hw" preload="none">
 <video id="video" controls=""src="https://vdn1.vzuu.com/SD/9bdfbdb4-06d7-11ec-862e-06c1ba80f579.mp4?disable_local_cache=1&auth_key=1647497255-0-0-d82ab6a5e1d17137650baf8ad3256b07&f=mp4&bu=pico&expiration=1647497255&v=hw" preload="none">
 
@@ -339,8 +356,8 @@ traceroute的实现原理，有两种方法：1、基于UDP报文实现；2、�
 
 让你在客户端输入 traceroute 命令+ip时， 客户端就发起一个ICMP回显请求报文，第一个数据包，TTL=1，这样第一跳路由器收到后,要转发出去时，会将TTL减一，即TTL=0, 就丢弃，然后第一跳路由器就返回一个ICMP超时的错误信息，客户端收到后，会判断是否收到ICMP 回显应答 报文？ 如果还没收到，就会继续发送回显请求报文，TTL加1进行尝试，当到底服务器后，服务器就会发送ICMP 回显应答报文。
 
-<video id="video" controls=""src="https://vdn1.vzuu.com/SD/b9a54260-06d7-11ec-8986-3623b0d475ed.mp4?disable_local_cache=1&auth_key=1648440770-0-0-5229755277cc8be5dc6635bd11cc20b7&f=mp4&bu=pico&expiration=1648440770&v=hw" preload="none">
+<video id="video" controls=""src="https://vdn1.vzuu.com/SD/b9a54260-06d7-11ec-8986-3623b0d475ed.mp4?disable_local_cache=1&auth_key=1648531851-0-0-af6d184918e4437b935908540e9237dd&f=mp4&bu=pico&expiration=1648531851&v=hw" preload="none">
+
 
 <video id="video" controls=""src="https://vdn1.vzuu.com/SD/f2ae763a-06d7-11ec-be9c-124d99edaad9.mp4?disable_local_cache=1&auth_key=1648440770-0-0-4cd8b67bb99ba8c272c7c06b74c073d8&f=mp4&bu=pico&expiration=1648440770&v=hw" preload="none">
-
-<video id="video" controls=""src="https://vdn.vzuu.com/SD/0cad36b6-06d8-11ec-882a-2aaab6ff7f5f.mp4?disable_local_cache=1&auth_key=1648440771-0-0-d9111dca3b63915479a22960b3a3b639&f=mp4&bu=pico&expiration=1648440771&v=ali" preload="none">
+<video id="video" controls=""src="https://vdn.vzuu.com/SD/0cad36b6-06d8-11ec-882a-2aaab6ff7f5f.mp4?disable_local_cache=1&auth_key=1648531851-0-0-7286ff326badfc1c1b66f60a6480d9f3&f=mp4&bu=pico&expiration=1648531851&v=ali" preload="none">
