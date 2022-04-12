@@ -129,9 +129,21 @@ for(String s:array) {
 
 
 
+### 比较 HashSet、LinkedHashSet 和 TreeSet 三者的异同
+
+- `HashSet`、`LinkedHashSet` 和 `TreeSet` 都是 `Set` 接口的实现类，都能保证元素唯一，并且都不是线程安全的。
+- `HashSet`、`LinkedHashSet` 和 `TreeSet` 的主要区别在于底层数据结构不同。`HashSet` 的底层数据结构是哈希表（基于 `HashMap` 实现）。`LinkedHashSet` 的底层数据结构是链表和哈希表，元素的插入和取出顺序满足 FIFO。`TreeSet` 底层数据结构是红黑树，元素是有序的，排序的方式有自然排序和定制排序。
+- 底层数据结构不同又导致这三者的应用场景不同。`HashSet` 用于不需要保证元素插入和取出顺序的场景，`LinkedHashSet` 用于保证元素的插入和取出顺序满足 FIFO 的场景，`TreeSet` 用于支持对元素自定义排序规则的场景。
+
+
+
 ## Map
 
 ### HashMap
+
+[源码分析](http://www.cyc2018.xyz/Java/Java%20%E5%AE%B9%E5%99%A8.html#hashmap)
+
+[HashMap源码&底层数据结构分析](https://javaguide.cn/java/collection/hashmap-source-code.html#hashmap-%E7%AE%80%E4%BB%8B)
 
 #### 底层机制
 
@@ -147,9 +159,58 @@ for(String s:array) {
 5. 以后再扩容,则需要扩容table容量为原来的2倍(32)，临界值为原来的2倍，即24，以此类推
 6. 在Java8中，如果一条链表的元素个数到达TREEIFY THRESHOLD(默认8)，并且table的大小>= MIN_TREEIFY_CAPACITY(默认64)，就会进行树化(红黑树)
 
+#### put 方法
+
+![ ](https://my-blog-to-use.oss-cn-beijing.aliyuncs.com/2019-7/put方法.png)
+
 #### 遍历方式
 
 [HashMap 的 7 种遍历方式与性能分析！](https://mp.weixin.qq.com/s/zQBN3UvJDhRTKP6SzcZFKw)
+
+
+
+#### HashMap 的长度为什么是 2 的幂次方
+
+首先，一般来说，我们常用的 Hash 函数是这样的：`index = HashCode(key) % Length`，但是因为位运算的效率比较高嘛，所以 HashMap 就相应的改成了这样：`index = HashCode(key) & (Length - 1)`。
+
+那么**为了保证根据上述公式计算出来的 index 值是分布均匀的，我们就必须保证 Length 是 2 的次幂**。
+
+> 解释一下：2 的次幂，也就是 2 的 n 次方，它的二进制表示就是 1 后面跟着 n 个 0，那么 2 的 n 次方 - 1 的二进制表示就是 n 个 1。而对于 & 操作来说，任何数与 1 做 & 操作的结果都是这个数本身。也就是说，index 的结果等同于 HashCode(key) 后 n 位的值，只要 HashCode 本身是分布均匀的，那么我们这个 Hash 算法的结果就是均匀的。
+
+
+
+#### 以 HashMap 为例，解释一下为什么重写 equals 方法的时候还需要重写 hashCode 方法呢
+
+https://blog.csdn.net/u011583316/article/details/107129546
+
+![img](https://gitee.com/Transmigration_zhou/pic/raw/master/img/20220408141909)
+
+在HashMap中的比较key是这样的，先求出key的hashCode(),比较其值是否相等，若相等再比较equals(),若相等则认为他们是相等的。若equals()不相等则认为他们不相等。
+
+- 如果只重写hashCode()不重写equals()方法，当比较equals()时，其实调用的是Object中的方法，只是看他们是否为同一对象（即进行内存地址的比较）。
+- 如果只重写equals()不重写hashCode()方法，在一个判断的时候就会被拦下HashMap认为是不同的Key。
+
+
+
+#### 如何保证 HashMap 线程安全？
+
+1. 使用 java.util.Collections 类的 `synchronizedMap` 方法包装一下 HashMap，得到线程安全的 HashMap，其原理就是对所有的修改操作都加上 synchronized。方法如下：
+
+```java
+public static <K,V> Map<K,V> synchronizedMap(Map<K,V> m) 
+```
+
+2. 使用线程安全的 `HashTable` 类代替，该类在对数据操作的时候都会上锁，也就是加上 synchronized
+
+3. 使用线程安全的 `ConcurrentHashMap` 类代替，该类在 JDK 1.7 和 JDK 1.8 的底层原理有所不同，JDK 1.7 采用数组 + 链表存储数据，使用分段锁 Segment 保证线程安全；JDK 1.8 采用数组 + 链表/红黑树存储数据，使用 CAS + synchronized 保证线程安全。
+
+
+
+### ConcurrentHashMap
+
+
+
+
 
 
 
@@ -178,22 +239,11 @@ HashMap 是 Hashtable 的轻量级实现
 
 ###  HashMap 和 TreeMap 区别
 
+`TreeMap` 和`HashMap` 都继承自`AbstractMap` ，但是需要注意的是`TreeMap`它还实现了`NavigableMap`接口和`SortedMap` 接口。
 
+实现 `NavigableMap` 接口让 `TreeMap` 有了对==集合内元素的搜索==的能力。
 
-
-
-## Other
-
-##### equals和hashCode
-
-https://blog.csdn.net/u011583316/article/details/107129546
-
-![img](https://gitee.com/Transmigration_zhou/pic/raw/master/img/20220408141909)
-
-在HashMap中的比较key是这样的，先求出key的hashCode(),比较其值是否相等，若相等再比较equals(),若相等则认为他们是相等的。若equals()不相等则认为他们不相等。
-
-- 如果只重写hashCode()不重写equals()方法，当比较equals()时，其实调用的是Object中的方法，只是看他们是否为同一对象（即进行内存地址的比较）。
-- 如果只重写equals()不重写hashCode()方法，在一个判断的时候就会被拦下HashMap认为是不同的Key。
+实现`SortedMap`接口让 `TreeMap` 有了对集合中的元素==根据键排序的能力==。默认是按 key 的升序排序，不过我们也可以指定排序的比较器。
 
 
 
