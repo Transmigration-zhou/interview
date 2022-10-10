@@ -165,13 +165,21 @@ DNS 工作过程:
   1. TCP协议可靠性好
   2. 数据同步传送的数据量比一个 DNS 请求和响应报文的数据量要多得多。
 
-## Cookie和Session
+## session、cookie和token
 
-Cookie 是**服务器发送到用户浏览器并保存在本地的一小块数据**，它会在浏览器之后向同一服务器再次发起请求时被携带上，用于告知服务端两个请求是否来自同一浏览器。
+cookie 是**服务器发送到用户浏览器并保存在本地的一小块数据**，它会在浏览器之后向同一服务器再次发起请求时被携带上，用于告知服务端两个请求是否来自同一浏览器。
 
 session 是另一种记录服务器和客户端会话状态的机制。session 是基于 cookie 实现的，session 存储在服务器端，sessionId 会被存储到客户端的cookie 中
 
 抽象地概括一下：一个 cookie 可以认为是一个「变量」，形如 name=value，存储在浏览器；一个 session 可以理解为一种数据结构，多数情况是「映射」（键值对），存储在服务器上。
+
+token 其实就是一串字符串而已，只不过它是被加密后的字符串，它通常使用 uid(用户唯一标识)、时间戳、签名以及一些其它参数加密而成，以作客户端进行请求的一个令牌。当第一次登录后，服务器生成一个Token便将此Token返回给客户端，以后客户端只需带上这个Token前来请求数据即可，无需再次带上用户名和密码。
+
+![img](https://gitee.com/Transmigration_zhou/pic/raw/master/img/20221008175157.jpg)
+
+**session 是空间换时间，token 是时间换空间。**
+
+他们的目的都是一样的：**鉴权和认证。**
 
 ### Cookie和Session的区别
 
@@ -267,6 +275,8 @@ session 是另一种记录服务器和客户端会话状态的机制。session �
 
 ### HTTPS是如何保证数据传输的安全，整体的流程是什么？（SSL是怎么工作保证安全的）
 
+见上图，采用了==非对称加密+对称加密==混合的加密方式。
+
 （1）客户端向服务器端发起SSL连接请求
 
 （2）服务器把公钥发送给客户端，并且服务器端保存着唯一的私钥
@@ -338,3 +348,4 @@ traceroute的实现原理，有两种方法：1、基于UDP报文实现；2、�
 
 <video id="video" controls=""src="https://vdn1.vzuu.com/SD/f2ae763a-06d7-11ec-be9c-124d99edaad9.mp4?disable_local_cache=1&auth_key=1648440770-0-0-4cd8b67bb99ba8c272c7c06b74c073d8&f=mp4&bu=pico&expiration=1648440770&v=hw" preload="none">
 <video id="video" controls=""src="https://vdn.vzuu.com/SD/0cad36b6-06d8-11ec-882a-2aaab6ff7f5f.mp4?disable_local_cache=1&auth_key=1648531851-0-0-7286ff326badfc1c1b66f60a6480d9f3&f=mp4&bu=pico&expiration=1648531851&v=ali" preload="none">
+
