@@ -123,6 +123,18 @@ https://www.acwing.com/blog/content/7861/
 - **流量控制**：当接收方来不及处理发送方的数据，能通过滑动窗口，提示发送方降低发送的速率，防止包丢失。
 - **拥塞控制**：当网络拥塞时，通过拥塞窗口，减少数据的发送，防止包丢失。
 
+### 拥塞控制实现的四种算法
+
+慢开始、拥塞避免、快重传、快恢复
+
+慢开始：不要一开始就发送大量的数据，先探测一下网络的拥塞程度，也就是说由小到大逐渐增加拥塞窗口的大小。
+
+拥塞避免：当拥塞窗口 cwnd 达到一个阈值时，窗口大小不再呈指数上升，而是以线性上升，避免增长过快导致网络拥塞。
+
+快重传：要求接收方在收到一个失序的报文段后就立即发出重复确认（为的是使发送方及早知道有报文段没有到达对方）
+
+快恢复：当发送方连续收到三个重复确认，说明网络很可能没有发生拥塞，可以快速恢复。
+
 ### TCP 初始序列号为什么是随机值
 
 这样做主要是出于网络安全的因素着想。==如果 ISN 是固定的，攻击者很容易猜出后续的确认号==，攻击者很容易猜出后续的确认号，然后伪造序列号进行攻击。
@@ -368,4 +380,3 @@ traceroute的实现原理，有两种方法：1、基于UDP报文实现；2、�
 
 <video id="video" controls=""src="https://vdn1.vzuu.com/SD/f2ae763a-06d7-11ec-be9c-124d99edaad9.mp4?disable_local_cache=1&auth_key=1648440770-0-0-4cd8b67bb99ba8c272c7c06b74c073d8&f=mp4&bu=pico&expiration=1648440770&v=hw" preload="none">
 <video id="video" controls=""src="https://vdn.vzuu.com/SD/0cad36b6-06d8-11ec-882a-2aaab6ff7f5f.mp4?disable_local_cache=1&auth_key=1648531851-0-0-7286ff326badfc1c1b66f60a6480d9f3&f=mp4&bu=pico&expiration=1648531851&v=ali" preload="none">
-
