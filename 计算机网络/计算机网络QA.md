@@ -235,6 +235,28 @@ token 其实就是一串字符串而已，只不过它是被加密后的字符�
 
 ## HTTP、HTTPS
 
+ Http协议是由Http请求和响应组成。当在浏览器中输入网址访问某个网站时，浏览器会将你的请求封装乘一个Http请求发送给服务器，服务器接收到请求后会组织响应数据封装成一个Http响应返回给浏览器。
+
+### Http首部
+
+https://blog.csdn.net/weixin_39649965/article/details/110707143
+
+**1、通用首部：**请求报文和响应报文都支持，换句话说，就是既可以出现在请求报文中，也可以出现在响应报文中。
+
+**2、请求首部：**出现在请求报文第一行(请求行)的后面，为请求报文添加一些附加信息
+
+![img](https://img-blog.csdnimg.cn/20201031144541516.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQzMTYzOTQz,size_16,color_FFFFFF,t_70)
+
+**3、响应首部：**出现在响应报文第一行的后面，提供了一些关于响应报文的一些信息
+
+![img](https://img-blog.csdnimg.cn/20201031150013866.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQzMTYzOTQz,size_16,color_FFFFFF,t_70)
+
+**4、实体首部：**我们都知道，请求报文和响应报文都包含实体报文，实体首部就是用来描述实体报文的一些属性。
+
+**5、扩展头部：**HTTP规范中没有定义的首部。
+
+
+
 ### HTTP、HTTPS的区别
 
 1. http是明文传输，https是加密的安全传输
