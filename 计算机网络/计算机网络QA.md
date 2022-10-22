@@ -236,6 +236,28 @@ token 其实就是一串字符串而已，只不过它是被加密后的字符�
 
 ## HTTP、HTTPS
 
+ Http协议是由Http请求和响应组成。当在浏览器中输入网址访问某个网站时，浏览器会将你的请求封装乘一个Http请求发送给服务器，服务器接收到请求后会组织响应数据封装成一个Http响应返回给浏览器。
+
+### Http首部
+
+https://blog.csdn.net/weixin_39649965/article/details/110707143
+
+**1、通用首部：**请求报文和响应报文都支持，换句话说，就是既可以出现在请求报文中，也可以出现在响应报文中。
+
+**2、请求首部：**出现在请求报文第一行(请求行)的后面，为请求报文添加一些附加信息
+
+![img](https://img-blog.csdnimg.cn/20201031144541516.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQzMTYzOTQz,size_16,color_FFFFFF,t_70)
+
+**3、响应首部：**出现在响应报文第一行的后面，提供了一些关于响应报文的一些信息
+
+![img](https://img-blog.csdnimg.cn/20201031150013866.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQzMTYzOTQz,size_16,color_FFFFFF,t_70)
+
+**4、实体首部：**我们都知道，请求报文和响应报文都包含实体报文，实体首部就是用来描述实体报文的一些属性。
+
+**5、扩展头部：**HTTP规范中没有定义的首部。
+
+
+
 ### HTTP、HTTPS的区别
 
 1. http是明文传输，https是加密的安全传输
@@ -380,3 +402,4 @@ traceroute的实现原理，有两种方法：1、基于UDP报文实现；2、�
 
 <video id="video" controls=""src="https://vdn1.vzuu.com/SD/f2ae763a-06d7-11ec-be9c-124d99edaad9.mp4?disable_local_cache=1&auth_key=1648440770-0-0-4cd8b67bb99ba8c272c7c06b74c073d8&f=mp4&bu=pico&expiration=1648440770&v=hw" preload="none">
 <video id="video" controls=""src="https://vdn.vzuu.com/SD/0cad36b6-06d8-11ec-882a-2aaab6ff7f5f.mp4?disable_local_cache=1&auth_key=1648531851-0-0-7286ff326badfc1c1b66f60a6480d9f3&f=mp4&bu=pico&expiration=1648531851&v=ali" preload="none">
+
