@@ -57,7 +57,7 @@ https://www.acwing.com/blog/content/7861/
 
 - B 收到 A 的确认后，连接建立。
 
-### TCP为什么是三次握手？
+#### TCP为什么是三次握手？
 
 三次握手最主要的目的就是服务端和客户端双方都==确认自己与对方的发送与接收是正常的==。
 
@@ -99,13 +99,13 @@ https://www.acwing.com/blog/content/7861/
 
 > TIME-WAIT - 等待足够的时间以确保远程TCP接收到连接中断请求的确认；
 
-### TCP为什么要四次挥手?
+#### TCP为什么要四次挥手?
 
 由于 TCP 的**半关闭**（half-close）特性，TCP 提供了连接的一端在结束它的发送后还能接收来自另一端数据的能力。
 
 任何一方都可以在数据传送结束后发出连接释放的通知，待对方确认后进入**半关闭状态**。当另一方也没有数据再发送的时候，则发出连接释放通知，对方确认后就**完全关闭**了TCP连接。
 
-### TIME_WAIT
+#### TIME_WAIT
 
 客户端接收到服务器端的 FIN 报文后进入此状态，此时并不是直接进入 CLOSED 状态，还需要等待一个时间计时器设置的时间 2MSL。这么做有两个理由：
 
@@ -143,13 +143,12 @@ https://www.acwing.com/blog/content/7861/
 
 | **UDP**                      | **TCP**                            |
 | ---------------------------------- | ---------------------------------------- |
-| UDP无连接                          | TCP面向连接                              |
+| UDP无连接                          | TCP面向连接，全双工通信                        |
 | 尽最大努力交付                     | 提供可靠的服务（不错、不丢、不重、有序） |
 | 面向报文                           | 面向字节流                               |
 | 没有拥塞控制                       | 有拥塞控制                               |
 | 支持一对一，一对多，多对一和多对多 | 点到点                                   |
 | 首部开销小                         | 首部开销大                               |
-| 不可靠信道                         | 全双工的可靠信道                         |
 
 ## DNS
 
@@ -380,3 +379,4 @@ traceroute的实现原理，有两种方法：1、基于UDP报文实现；2、�
 
 <video id="video" controls=""src="https://vdn1.vzuu.com/SD/f2ae763a-06d7-11ec-be9c-124d99edaad9.mp4?disable_local_cache=1&auth_key=1648440770-0-0-4cd8b67bb99ba8c272c7c06b74c073d8&f=mp4&bu=pico&expiration=1648440770&v=hw" preload="none">
 <video id="video" controls=""src="https://vdn.vzuu.com/SD/0cad36b6-06d8-11ec-882a-2aaab6ff7f5f.mp4?disable_local_cache=1&auth_key=1648531851-0-0-7286ff326badfc1c1b66f60a6480d9f3&f=mp4&bu=pico&expiration=1648531851&v=ali" preload="none">
+
