@@ -269,3 +269,31 @@ A (黑) -> B (灰) -> C (白)
 ## 并发编程
 
 来源：https://geektutu.com/post/qa-golang-3.html
+
+
+
+### GMP模型
+
+https://learnku.com/articles/41728
+
+- G：goroutine协程，使用go关键字可以创建一个golang协程。
+- M：thread线程，协程必须放在线程上执行。
+- P：processor处理器，包含运行Go代码的必要资源，也有调度goroutine的能力。
+
+==M必须拥有P，才能执行G中的代码，P负责G的调度。==
+
+![16-GMP-调度.png](https://gitee.com/Transmigration_zhou/pic/raw/master/Ugu3C2WSpM.jpeg!large)
+
+#### goroutine调度流程
+
+![18-go-func调度周期.jpeg](https://gitee.com/Transmigration_zhou/pic/raw/master/a4vWtvRWGQ.jpeg!large)
+
+当 M 系统调用结束时候，这个 G 会尝试获取一个空闲的 P 执行，并放入到这个 P 的本地队列。如果获取不到 P，那么这个线程 M 变成休眠状态， 加入到空闲线程中，然后这个 G 会被放入全局队列中。
+
+#### 调度器的生命周期
+
+![17-pic-go调度器生命周期.png](https://gitee.com/Transmigration_zhou/pic/raw/master/j37FX8nek9.png!large)
+
+> M0 : 启动后编号为0的主线程，这个M对应的实例会在全局变量runtime.m0中，不需要在heap上分配，M0负责执行初始化操作和启动第一个协程G，之后,M0便和普通M一样
+>
+> G0：每次启动一个M都会第一个创建的goroutine，G0仅负责调度G，G0不指向任何可执行的函数，每个M都有一个自己的G0。在调度或系统调用时会使用G0的栈空间，全局变量的G0是M0的G0。
