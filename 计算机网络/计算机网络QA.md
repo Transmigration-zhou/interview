@@ -19,6 +19,8 @@
 - 二层数据链路层时数据被称为**帧**（Frames）；
 - 一层物理层时数据被称为**比特流**（Bits）。
 
+![应用层](https://www.topgoer.com/static/6.1/2.png)
+
 ==TCP协议在传输层，IP协议在网络层，HTTP协议在应用层，DNS协议在应用层==
 
 ## ARQ协议
@@ -186,6 +188,21 @@ TCP 初始序列号，ISN是发送方字节数据编号起点，目的是让对�
 
 一个完整的业务可能会被TCP拆分成多个包进行发送，也有可能把多个小的包封装成一个大的数据包发送，这个就是TCP的拆包和粘包问题。
 
+### 原因
+
+主要原因就是tcp数据传递模式是流模式，在保持长连接的时候可以进行多次的收和发。
+
+“粘包”可发生在发送端也可发生在接收端：
+
+- 由Nagle算法造成的发送端的粘包：Nagle算法是一种改善网络传输效率的算法。简单来说就是当我们提交一段数据给TCP发送时，TCP并不立刻发送此段数据，而是等待一小段时间看看在等待期间是否还有要发送的数据，若有则会一次把这两段数据发送出去。
+- 接收端接收不及时造成的接收端粘包：TCP会把接收到的数据存在自己的缓冲区中，然后通知应用层取数据。当应用层由于某些原因不能及时的把TCP的数据取出来，就会造成TCP缓冲区中存放了几段数据。
+
+### 解决办法
+
+出现”粘包”的关键在于接收方不确定将要传输的数据包的大小，因此我们可以对数据包进行封包和拆包的操作。
+
+封包：封包就是给一段数据加上包头，这样一来数据包就分为包头和包体两部分内容了(过滤非法包时封包会加入”包尾”内容)。包头部分的长度是固定的，并且它存储了包体的长度，根据包头长度固定以及包头中含有包体长度的变量就能正确的拆分出一个完整的数据包。
+
 #### **为什么UDP没有粘包/拆包？**
 
 - TCP协议是面向字节流的协议，UDP是面向报文的协议
@@ -205,7 +222,27 @@ TCP 初始序列号，ISN是发送方字节数据编号起点，目的是让对�
 | 支持一对一，一对多，多对一和多对多 | 点到点                                   |
 | 首部开销小                         | 首部开销大                               |
 
+
+
+## 在浏览器中输入url地址后显示主页的过程
+
+- 根据域名，进行DNS域名解析
+- 拿到解析的IP地址，建立TCP连接
+- 向IP地址，发送HTTP请求
+- 服务器响应HTTP请求并返回HTTP报文
+- 关闭TCP连接
+- 浏览器解析HTML渲染页面
+
+
+
 ## DNS
+
+DNS 是：
+
+1. 一个由分层的 DNS 服务器实现的**分布式数据库**
+   - 整个 DNS 系统由分散在世界各地的很多台 DNS 服务器组成，每台 DNS 服务器上都保存了一些数据，这些数据可以让我们最终查到主机名对应的 IP
+2. 一个使得主机能够查询分布式数据库的**应用层协议**
+   - 将**主机名转换成 IP 地址**
 
 ### 为什么需要 DNS 协议？(DNS 原理、DNS 协议有啥用)
 
@@ -280,15 +317,6 @@ token 其实就是一串字符串而已，只不过它是被加密后的字符�
 4、存储大小不同。Cookie大小受浏览器的限制，一般单个Cookie保存的数据不能超过4K。Session 可存储数据远高于 Cookie，但是当访问量过多，会占用过多的服务器资源。
 
 5、有效期不同。 Cookie 可设置为长时间保持，比如我们经常使用的默认登录功能，Session 一般失效时间较短，客户端关闭（默认情况下）或者 Session 超时都会失效。
-
-## 在浏览器中输入url地址后显示主页的过程
-
-- 根据域名，进行DNS域名解析
-- 拿到解析的IP地址，建立TCP连接
-- 向IP地址，发送HTTP请求
-- 服务器响应HTTP请求并返回HTTP报文
-- 关闭TCP连接
-- 浏览器解析HTML渲染页面
 
 
 
@@ -461,6 +489,22 @@ HTTPS 主要对 HTTP 中**容易遭受攻击**的缺点进行了改进，主要�
 
 HTTPS 的本质其实是先和 SSL 进行通信，再由 SSL 和 TCP 进行通信
 
+#### TLS四次握手
+
+HTTPS 首次通信需要 7 次握手（==TCP 三次握手 + TLS 四次握手==）
+
+TLS 四次握手是在 TCP 建立连接之后进行的。
+
+首先**第一次握手**客户端会向服务端发送client hello信息，告诉服务端需要的tls版本信息，支持的加密算法有哪些，这些算法组成加密套件，然后是一个随机数。
+
+然后**第二次握手**服务端向客户端发送一个Server hello，然后告诉客户端服务端支持的确认支持的tls版本以及选择的加密套件，也会生成一个随机数告诉客户端，然后服务器出示一个证书，这样浏览器可以根据自己信任的证书列表来确认这个证书服务器是否可信，然后把公钥给客户端，再发后一个结束信号，Server Hello Done
+
+**第三次握手**会使用公钥加密生成预主密钥给服务端，服务端使用私钥解密，接下来使用预祝密钥和前两个随机数组成最终的密钥进行密钥通信，
+
+**第四次握手**服务端发送一个信号对客户端进行确认，加密通信开始。
+
+
+
 #### 对称加密和非对称加密
 
 对称加密：一份密钥
@@ -506,51 +550,3 @@ CA：数字证书认证机构，是客户端服务端都认可的第三方机构
 4. http的 URL 前缀是 `http://`，https的 URL 前缀是 `https://`
 5. https比http耗费更多服务器资源
 6. https协议要CA证书申请
-
-## ICMP协议 Ping Traceroute
-
-https://zhuanlan.zhihu.com/p/116902722
-
-### Ping 原理
-
-Ping 的原理是 ICMP 协议。
-
-- 客户端：向服务端发送ICMP回显请求报文（echo message）。
-- 服务端：向客户端返回ICMP回西显响应报文（echo reply message）。
-
-![img](https://gitee.com/Transmigration_zhou/pic/raw/master/img/20220317130056.jpg)
-
-### ICMP 协议的格式
-
-ICMP 包头的**类型**字段，大致可以分为两大类：
-
-- 一类是用于诊断的查询消息，也就是「**查询报文类型**」
-- 另一类是通知出错原因的错误消息，也就是「**差错报文类型**」
-
-![img](https://gitee.com/Transmigration_zhou/pic/raw/master/img/20220317130156)
-
-### Traceroute（路由追踪） 原理
-
-https://zhuanlan.zhihu.com/p/404043710
-
-traceroute的实现原理，有两种方法：1、基于UDP报文实现；2、基于ICMP报文实现。
-
-### 基于UDP报文实现
-
-让你在客户端输入 traceroute 命令+ip时， 客户端就发起一个UDP报文，使用一个大于30000的端口号（选这么端口号，目的端一般都是未使用，所以待会就收到一个端口不可达信息。）这样子，服务器端收到这个UDP报文后就会返回ICMP端口不可达的错误信息。同时，第一个数据包，TTL=1，这样第一跳路由器收到后,要转发出去时，会将TTL减一，即TTL=0, 就丢弃，然后第一跳路由器就返回一个ICMP超时的错误信息，所以，客户端通过判断收到ICMP端口不可达报文来确定数据包已到达目的地，如果是收到ICMP超时错误信息报文，说明还没到达目的地，就会将TTL加1，以此类推。
-
-<video id="video" controls=""src="https://vdn.vzuu.com/SD/439fed4a-06d7-11ec-9f4b-ba0fc80291c2.mp4?disable_local_cache=1&auth_key=1647497018-0-0-18cb4276de00ae3f857b3c65b509551f&f=mp4&bu=pico&expiration=1647497018&v=ali" preload="none">
-
-<video id="video" controls=""src="https://vdn1.vzuu.com/SD/80dda4c2-06d7-11ec-8c9c-3e117ea31dbf.mp4?disable_local_cache=1&auth_key=1647497052-0-0-3a2d3738c9569e5793a879f0261c42d6&f=mp4&bu=pico&expiration=1647497052&v=hw" preload="none">
-<video id="video" controls=""src="https://vdn1.vzuu.com/SD/9bdfbdb4-06d7-11ec-862e-06c1ba80f579.mp4?disable_local_cache=1&auth_key=1647497255-0-0-d82ab6a5e1d17137650baf8ad3256b07&f=mp4&bu=pico&expiration=1647497255&v=hw" preload="none">
-
-### 基于ICMP报文实现
-
-使用ICMP的**回显请求**和**回显应答**这两种报文
-
-让你在客户端输入 traceroute 命令+ip时， 客户端就发起一个ICMP回显请求报文，第一个数据包，TTL=1，这样第一跳路由器收到后,要转发出去时，会将TTL减一，即TTL=0, 就丢弃，然后第一跳路由器就返回一个ICMP超时的错误信息，客户端收到后，会判断是否收到ICMP 回显应答 报文？ 如果还没收到，就会继续发送回显请求报文，TTL加1进行尝试，当到底服务器后，服务器就会发送ICMP 回显应答报文。
-
-<video id="video" controls=""src="https://vdn1.vzuu.com/SD/b9a54260-06d7-11ec-8986-3623b0d475ed.mp4?disable_local_cache=1&auth_key=1648531851-0-0-af6d184918e4437b935908540e9237dd&f=mp4&bu=pico&expiration=1648531851&v=hw" preload="none">
-
-<video id="video" controls=""src="https://vdn1.vzuu.com/SD/f2ae763a-06d7-11ec-be9c-124d99edaad9.mp4?disable_local_cache=1&auth_key=1648440770-0-0-4cd8b67bb99ba8c272c7c06b74c073d8&f=mp4&bu=pico&expiration=1648440770&v=hw" preload="none">
-<video id="video" controls=""src="https://vdn.vzuu.com/SD/0cad36b6-06d8-11ec-882a-2aaab6ff7f5f.mp4?disable_local_cache=1&auth_key=1648531851-0-0-7286ff326badfc1c1b66f60a6480d9f3&f=mp4&bu=pico&expiration=1648531851&v=ali" preload="none">
