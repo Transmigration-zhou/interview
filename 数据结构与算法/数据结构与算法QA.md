@@ -133,15 +133,25 @@ https://blog.csdn.net/weixin_39573535/article/details/109959710
 
 ### 二叉搜索树
 
+**所有的结点存储一个关键字**
+
+**最多拥有两个叉**
+
 任何节点的键值一定大于其左子树中的每一个节点的键值，并小于其右子树中的每一个节点的键值。
 
+![image-20230207180242181](https://gitee.com/Transmigration_zhou/pic/raw/master/image-20230207180242181.png)
+
 ### 平衡二叉树（AVL树）
+
+![image-20230207180837376](https://gitee.com/Transmigration_zhou/pic/raw/master/image-20230207180837376.png)
 
 它是一棵空树或者它的左右两个子树的高度差的绝对值不超过1，并且左右两个子树都是一颗平衡二叉树。
 
 平衡二叉树很好的解决了二叉查找树退化成链表的问题，把插入，查找，删除的时间复杂度最好情况和最坏情况都维持在$O(logN)$。但是频繁的旋转会使插入和删除牺牲掉$O(logN)$左右的时间。
 
 ### 红黑树
+
+![image-20230207180850225](https://gitee.com/Transmigration_zhou/pic/raw/master/image-20230207180850225.png)
 
 https://juejin.cn/post/6844904020549730318
 
@@ -157,10 +167,14 @@ https://juejin.cn/post/6844904020549730318
 
 ### B-Tree
 
+![img](https://pic2.zhimg.com/v2-2c2264cc1c6c603dfeca4f84a2575901_r.jpg)
+
 多路搜索树，并不是二叉的。
 
 ### B+Tree
 
 B+树是对B树的一种变形树
+
+![img](https://img-service.csdnimg.cn/img_convert/119e90e160e2a1f007d72677bbd0bca9.png)
 
 B和B+树的区别在于，B+树的非叶子结点只包含导航信息，不包含实际的值，所有的叶子结点和相连的节点使用链表相连，便于区间查找和遍历。
