@@ -4,8 +4,6 @@
 
 ## 1.进程、线程、协程的区别
 
-https://flying-veal.notion.site/a4ca2ea1cfda477f9063c86c00daab3a
-
 [从 linux内核来看进程与线程的异同](https://blog.csdn.net/smilejiasmile/article/details/109389607)
 
 ### 进程与线程的区别
@@ -149,6 +147,8 @@ https://flying-veal.notion.site/a4ca2ea1cfda477f9063c86c00daab3a
 
 ==**共享内存是最快的一种IPC方式。**==
 
+
+
 ## 5.死锁
 
 ### 什么是死锁?
@@ -263,7 +263,7 @@ https://flying-veal.notion.site/a4ca2ea1cfda477f9063c86c00daab3a
 
 
 
-## 9.页面置换算法
+## 9.页面置换算法（缺页中断算法）
 
 - **最佳置换算法(OPT)**
 
@@ -408,7 +408,7 @@ https://flying-veal.notion.site/a4ca2ea1cfda477f9063c86c00daab3a
 
 
 
-## 17. 操作系统中堆和栈的区别
+## 17.操作系统中堆和栈的区别
 
 堆与栈表示两种内存管理方式
 
@@ -441,3 +441,15 @@ https://flying-veal.notion.site/a4ca2ea1cfda477f9063c86c00daab3a
    栈内存的访问直接从地址读取数据到寄存器，然后放到目标地址。
 
    堆内存的访问更麻烦，先将分配的地址放到寄存器，在读取地址的值，最后再放到目标文件中，开销更大。
+
+
+
+## 18.linux命令
+
+查看端口占用：使用命令「lsof -i :端口号」来查看某个特定的端口是否被占用。
+
+查看CPU负载：使用命令「top」来查看系统的CPU负载。
+
+查看内存占用：使用命令「free」来查看系统的内存占用情况。
+
+发送信号给进程：使用命令「kill」来发送信号给进程，其中参数「-SIG」表示发送的信号，「pid」表示进程的ID。例如「kill -SIGTERM pid」表示发送终止信号给进程。
