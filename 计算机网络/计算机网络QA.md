@@ -470,7 +470,7 @@ https://blog.csdn.net/weixin_39649965/article/details/110707143
 
    HTTP 1.0中默认是关闭的，需要在http头加入"Connection: Keep-Alive"，才能启用Keep-Alive；HTTP 1.1中默认启用Keep-Alive，如果加入"Connection: close "，才关闭。
 
-2. 引入 HOST 请求头。在 HTTP 1.0 中认为每台服务器都绑定一个唯一的IP地址，因此，请求消息中的URL并没有传递主机名（hostname）。但随着虚拟主机技术的发展，在一台物理服务器上可以存在多个虚拟主机，并且它们共享一个IP地址。
+2. HTTP1.1引入 HOST 请求头。在 HTTP1.0 中认为每台服务器都绑定一个唯一的IP地址，因此，请求消息中的URL并没有传递主机名（hostname）。但随着虚拟主机技术的发展，在一台物理服务器上可以存在多个虚拟主机，并且它们共享一个IP地址。
 
 3. 错误通知管理 ：HTTP 1.1 新增了 24 个错误状态响应码。如 410 表示请求资源被永久删除。
 
