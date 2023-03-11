@@ -700,15 +700,70 @@ https://learnku.com/articles/41728
 
 <img src="https://gitee.com/Transmigration_zhou/pic/raw/master/Ugu3C2WSpM.jpeg!large" alt="16-GMP-调度.png" style="zoom:50%;" />
 
-#### goroutine调度流程
+> 全局队列：存放等待运行的 G。
+>
+> P的本地队列：存放等待运行的G，数量一般不超过256个。
+>
+> 新建一个goroutine的时候，优先放到P的本地队列中，如果队列满了，才会尝试放到全局队列中。
+> 当P的本地队列为空时，M也会尝试从全局队列拿一些G放到P的本地队列 。
+>
+> M：线程想运行任务就得获取 P，从 P 的本地队列获取 G，P 队列为空时，M 也会尝试从全局队列拿一批 G 放到 P 的本地队列，或从其他 P 的本地队列偷一半放到自己 P 的本地队列。M 运行 G，G 执行之后，M 会从 P 获取下一个 G，不断重复下去。
+>
+> 当 M 调用结束时候，这个 G 会尝试获取一个空闲的 P ，并放入到这个 P 的本地队列。如果获取不到 P，那么这个线程 M 变成休眠状态， 加入到空闲线程中，然后这个 G 会被放入全局队列中。
+>
+> 一个P最多包含257个G：本地队列runq（256个）+优先级最高runnext（1个）
+>
+> runnext：一个P如果还有剩余时间片，那么P中runnext字段中的goroutine会继承这部分剩余时间并执行。
+
+
+
+ **如果一个P上的G超过了257个咋办？**
+
+如果一个P上的G超过257个，就会将超过部分放到全局队列上 ，全局队列是一个链表，无限长。
+
+
+
+**如果一个P上的所有G执行完了咋办？**
+
+`runtime.findrunnable() `
+
+1. 如果P的runnext存在有就用这个G【==不加锁==】
+2. 从P的本地队列中顺序拿一下G【 ==不加锁==】
+3. 从全局队列中拿一个G【==加锁==】，顺便从全局队列拿出128（不足128就给全部）个G给这个P
+4. 从netpoll网络轮询器中拿一个G，剩下的通过 injectglist 放到全局队列中【==加锁==】
+5. 随机从其他的P的本地队列中偷一半给当前P
+6. 将P设置为空闲状态并且将M从P中拿下来，但是不会kill M
+
+
+
+##### goroutine调度流程
 
 ![img](https://image-1302243118.cos.ap-beijing.myqcloud.com/img/ddyl519.jpg)
-当 M 系统调用结束时候，这个 G 会尝试获取一个空闲的 P 执行，并放入到这个 P 的本地队列。如果获取不到 P，那么这个线程 M 变成休眠状态， 加入到空闲线程中，然后这个 G 会被放入全局队列中。
 
 #### 调度器的生命周期
 
 ![17-pic-go调度器生命周期.png](https://gitee.com/Transmigration_zhou/pic/raw/master/j37FX8nek9.png!large)
 
-> M0 : 启动后编号为0的主线程，这个M对应的实例会在全局变量runtime.m0中，不需要在heap上分配，M0负责执行初始化操作和启动第一个协程G，之后,M0便和普通M一样
+> M0 : 启动后编号为0的主线程，这个M对应的实例会在全局变量runtime.m0中，不需要在heap上分配，==M0负责执行初始化操作和启动第一个协程G，之后M0便和普通M一样。==
 >
-> G0：每次启动一个M都会第一个创建的goroutine，G0仅负责调度G，G0不指向任何可执行的函数，每个M都有一个自己的G0。在调度或系统调用时会使用G0的栈空间，全局变量的G0是M0的G0。
+> G0：每次启动一个M都会第一个创建的goroutine，==G0仅负责调度G，G0不会被调度程序抢占，每个M都有一个自己的G0。==在调度或系统调用时会使用G0的栈空间，全局变量的G0是M0的G0。
+
+
+
+#### goroutine发生重新调度的场景：
+
+- 阻塞 I/O
+- select操作
+- 阻塞在channel
+- 等待锁
+- 主动调用 runtime.Gosched()
+
+
+
+#### goroutine 的抢占式调度
+
+https://jingwei.link/2019/05/26/golang-routine-scheduler.html
+
+goroutine通过**抢占机制**来打断长时间占用 CPU 资源的 goroutine ，发起重新调度。
+
+**抢占机制**：Golang 运行时（runtime）中的系统监控线程 sysmon 可以找出“长时间占用”的 goroutine，从而“提醒”相应的 goroutine 该中断了。
