@@ -436,6 +436,8 @@ type hmap struct {
 
 ##### sync.Map
 
+https://blog.csdn.net/Darrenchiu/article/details/107337482
+
 ```go
 type Map struct {
     mu Mutex
@@ -447,13 +449,13 @@ type Map struct {
 
 和原始map+RWLock的实现并发的方式相比，减少了加锁对性能的影响。
 
-sync.Map里有两个map一个是专门用于读的read map，另一个是提供读写的dirty map；优先读read map，若不存在则加锁穿透读dirty map，同时记录一个未从read map读到的计数，当计数到达一定值，就将read map用dirty map进行覆盖
+sync.Map里有两个map一个是专门用于读的read map，另一个是提供读写的dirty map；优先读read map，若不存在则加锁穿透读dirty map，同时记录一个未从read map读到的计数，当计数到达一定值，就将read map用dirty map进行覆盖。
 
-优点：通过读写分离，降低锁时间来提高效率；
+优点：通过读写分离，降低锁时间来提高效率。
 
 缺点：不适用于大量写的场景，这样会导致read map读不到数据而进一步加锁读取，同时dirty map也会一直晋升为read map，整体性能较差。
 
-适用场景：大量读，少量写。存在大量写的场景可以考虑map+metux
+适用场景：大量读，少量写。存在大量写的场景可以考虑map+metux。
 
 
 
