@@ -431,6 +431,14 @@ RDB触发条件：
 
 核心思想：当缓存的数据有更新值了，它采用的不是更新缓存数据，而是删除缓存数据。
 
+#### 如何解决mysql redis数据不一致
+
+- 延迟双删
+
+  ![image-20230314154641085](https://gitee.com/Transmigration_zhou/pic/raw/master/image-20230314154641085.png)
+
+- 使用Canal实现mysql binlog增量订阅数据
+
 ### 缓存击穿
 
 定义：查询**某个**数据的值，该值在缓存中不存在，在数据库中存在
