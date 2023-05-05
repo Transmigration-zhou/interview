@@ -67,9 +67,78 @@ Go的内存管理组件主要有：`mspan`、`mcache`、`mcentral`和`mheap`
 
 编译器会根据变量是否被外部引用来决定是否逃逸：
 
-1. 如果函数外部没有引用，则优先放到栈中；
-2. 如果函数外部存在引用，则必定放到堆中;
-3. 如果栈上放不下，则必定放到堆上;
+1. 如果函数外部没有引用，则优先放到栈中
+2. 如果函数外部存在引用，则必定放到堆中
+3. 如果栈上放不下，则必定放到堆上
+
+查看逃逸的方法`go build -gcflags "-m -l" main.go `
+
+### 产生逃逸的情况
+
+- 函数返回后变量仍被使用的情况
+
+  1. 返回指针
+
+     由于返回时被外部引用，因此其生命周期大于栈，则溢出。
+
+     ```go
+     func escapeValue() *int{
+         var a int
+         a = 1
+         return &a
+     }
+     ```
+
+  2. 在一个切片上存储指针或带指针的值
+
+     数组可能是在栈上分配的，但其引用的值一定是在堆上。
+
+     ```go
+     func escapeString() {
+     	s := make([]*string, 10) //does not escape
+     	a := "aaa"               //moved to heap: a
+     	s[0] = &a
+     }
+     ```
+
+  3. 发送指针或带有指针的值到 channel 中。
+
+     在编译时，是没有办法知道哪个 goroutine 会在 channel 上接收数据，所以编译器没法知道变量什么时候才会被释放。
+
+     ```go
+     func escapeChannel() {
+        var ch = make(chan *int, 1)
+        var a = 10 //moved to heap: a
+        var b = &a
+        go func() {
+           ch <- b
+        }()
+     }
+     ```
+
+  4. 闭包调用
+
+     导致函数返回后函数内变量仍被外部使用
+
+     ```go
+     func fibonacci() func() int {
+     	a, b := 0, 1
+     	return func() int {
+     		a, b = b, a+b
+     		return a
+     	}
+     }
+     ```
+
+- 变量过大被分配在堆上
+
+  ```go
+  s := make([]int64, 8192, 8192)
+  ```
+
+   
+
+
 
 
 

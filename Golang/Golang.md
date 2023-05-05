@@ -265,6 +265,8 @@ import : 由 runtime 初始化每个导入的包，初始化顺序不是按照�
 
 ### 1. Slice
 
+#### 数据结构
+
 https://zhuanlan.zhihu.com/p/449851884
 
 切片的本质就是对底层数组的封装，它包含了三个信息：底层数组的指针、切片的长度（len）和切片的容量（cap）。
@@ -354,6 +356,8 @@ for i := 0; i < 10000; i++ {
 由于slice的底层是数组，很可能数组很大，但slice所取的元素数量却很小，这就导致数组占用的绝大多数空间是被浪费的
 
 ### 2. Map
+
+#### 数据结构
 
 https://zhuanlan.zhihu.com/p/460958342
 
@@ -461,11 +465,11 @@ sync.Map里有两个map一个是专门用于读的read map，另一个是提供�
 
 ### 3. Channel
 
-channel 是一个队列，遵循先进先出的原则，负责协程之间的通信
+channel 是一个队列，遵循先进先出的原则，负责协程之间的通信。
 
+#### 数据结构
 
-
-channel变量是一个存储在函数栈帧上的指针，指向堆上的hchan结构体
+channel变量是一个存储在函数栈帧上的指针，指向堆上的hchan结构体。
 
 ```go
 type hchan struct {
@@ -484,6 +488,17 @@ type hchan struct {
     lock mutex //互斥锁，保证读写channel时不存在并发竞争问题
 }
 ```
+> buf：用来保存goroutine之间传递数据的循环链表 
+> sendx和recvx：用来记录此循环链表当前发送或接收数据的下标值。
+> sendq 和 recvq：用于保存向该chan发送和从改chan接收数据的goroutine的队列。
+> lock：保证channel写入和读取数据时线程安全的锁。
+>
+> 初始hchan结构体中的buf为空，sendx和recvx均为0。
+> 当向ch里发送数据时，首先会对buf加锁，然后**将数据copy到buf中**，然后sendx++，然后释放对buf的锁。
+> 当消费ch的时候，会首先对buf加锁，然后将buf中的**数据copy到task变量对应的内存里**，然后recvx++,并释放锁。
+
+
+
 
 | 操作 \ 状态 | 未初始化         | 关闭                               | 正常             | 没值     | 满       |
 | ----------- | ---------------- | ---------------------------------- | ---------------- | -------- | -------- |
@@ -674,7 +689,7 @@ func (m *Mutex) Unlock() {
 
 
 
-### 5. goroutine
+### 5. Goroutine
 
 goroutine是由Go运行时（runtime）管理的协程（用户态的轻量级线程），而不是操作系统管理。
 
@@ -769,3 +784,49 @@ https://jingwei.link/2019/05/26/golang-routine-scheduler.html
 goroutine通过**抢占机制**来打断长时间占用 CPU 资源的 goroutine ，发起重新调度。
 
 **抢占机制**：Golang 运行时（runtime）中的系统监控线程 sysmon 可以找出“长时间占用”的 goroutine，从而“提醒”相应的 goroutine 该中断了。
+
+
+
+### 6. Context
+
+context 主要用来在 goroutine 之间传递上下文信息，包括：取消信号、超时时间、截止时间、k-v 等。
+
+context 用来解决 goroutine 之间退出通知、元数据传递的功能。
+
+```go
+type Context interface {
+    Deadline() (deadline time.Time, ok bool)
+    Done() <-chan struct{}
+    Err() error
+    Value(key interface{}) interface{}
+}
+```
+
+- `Deadline`返回绑定当前`context`的任务被取消的截止时间；如果没有设定期限，将返回`ok == false`。
+- `Done` 当绑定当前`context`的任务被取消时，将返回一个关闭的`channel`；如果当前`context`不会被取消，将返回`nil`。
+- `Err` 如果`Done`返回的`channel`没有关闭，将返回`nil`;如果`Done`返回的`channel`已经关闭，将返回非空的值表示任务结束的原因。如果是`context`被取消，`Err`将返回`Canceled`；如果是`context`超时，`Err`将返回`DeadlineExceeded`。
+- `Value` 返回`context`存储的键值对中当前`key`对应的值，如果没有对应的`key`,则返回`nil`。
+
+#### emptyCtx
+
+`emptyCtx`是一个`int`类型的变量，但实现了`context`的接口。`emptyCtx`没有超时时间，不能取消，也不能存储任何额外信息，所以`emptyCtx`用来作为`context`树的根节点。
+
+#### valueCtx
+
+`valueCtx`利用一个`Context`类型的变量来表示父节点`context`，所以当前`context`继承了父`context`的所有信息；`valueCtx`类型还携带一组键值对，也就是说这种`context`可以携带额外的信息。`valueCtx`实现了`Value`方法，用以在`context`链路上获取`key`对应的值，如果当前`context`上不存在需要的`key`,会沿着`context`链向上寻找`key`对应的值，直到根节点。
+
+`WithValue`用以向`context`添加键值对。
+
+#### cancelCtx
+
+跟`valueCtx`类似，`cancelCtx`中也有一个`context`变量作为父节点；变量`done`表示一个`channel`，用来表示传递关闭信号；`children`表示一个`map`，存储了当前`context`节点下的子节点；`err`用于存储错误信息表示任务结束的原因。
+
+`WithCancel`函数用来创建一个可取消的`context`，即`cancelCtx`类型的`context`。
+
+#### timerCtx
+
+`timerCtx`是一种基于`cancelCtx`的`context`类型，从字面上就能看出，这是一种可以定时取消的`context`。
+
+`WithDeadline`返回一个基于`parent`的可取消的`context`，并且其过期时间`deadline`不晚于所设置时间`d`。
+
+与`WithDeadline`类似，`WithTimeout`也是创建一个定时取消的`context`，只不过`WithDeadline`是接收一个过期时间点，而`WithTimeout`接收一个相对当前时间的过期时长`timeout`。
