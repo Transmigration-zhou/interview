@@ -169,6 +169,10 @@ rune等同于**int32**，主要用于表示一个字符类型大于一个字节�
 
 使用 + 拼接性能最差，strings.Builder，bytes.Buffer 相近，strings.Buffer 更快
 
+![image-20230124203352486 ](https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/eb32e9e83a3748b58687dca0546e9a44~tplv-k3u1fbpfcp-jj-mark:3024:0:0:0:q75.awebp)
+
+![image-20230124203506740 ](https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/9349abba07504127bffa0ede6dffc314~tplv-k3u1fbpfcp-jj-mark:3024:0:0:0:q75.awebp)
+
 原因：
 
 - 字符串在 Go 语言中是不可变类型，占用内存大小是固定的
@@ -585,7 +589,67 @@ channel 也分为双向通道和单向通道。
 
 - 控制并发数
 
-  `var limit = make(chan int, 3)`
+  `var limit = make(chan struct{}, 3)`
+  
+  - ```go
+    func main() {
+    	var wg sync.WaitGroup
+  
+    	sem := make(chan struct{}, 2) // 最多允许2个并发同时执行
+    	taskNum := 10
+    
+    	for i := 0; i < taskNum; i++ {
+    		wg.Add(1)
+    		sem <- struct{}{} // 获取信号
+    		go func(id int) {
+    			defer wg.Done()
+    
+    			defer func() { <-sem }() // 释放信号
+    
+    			// do something for task
+    			time.Sleep(time.Second * 2)
+    			fmt.Println(id, time.Now())
+    		}(i)
+    	}
+    	wg.Wait()
+    }
+    ```
+    
+  - ```go
+    // runDynamicTask 
+    // 最大同时运行maxTaskNum个任务处理数据
+    // 自定义令牌池维持maxTaskNum个令牌供竞争
+    func runDynamicTask(dataChan <-chan int, maxTaskNum int) {
+      // 初始化令牌池
+      tokenPool := make(chan struct{}, maxTaskNum)
+      for i := 0; i < maxTaskNum; i++ {
+          tokenPool <- struct{}{}
+      }
+    
+      var wg sync.WaitGroup
+    
+      for data := range dataChan {
+          // 先获取令牌，如果被消费完则阻塞等待其它任务返还令牌
+          <-tokenPool
+    
+          wg.Add(1)
+          go func(data int) {
+              defer wg.Done()
+    
+              // 任务运行完成，返还令牌
+              defer func() {
+                  tokenPool <- struct{}{}
+              }()
+    
+              // do something
+              time.Sleep(3 * time.Second)
+              fmt.Println(data, time.Now())
+          }(data)
+      }
+    
+      wg.Wait()
+    }
+    ```
 
 #### 线程安全
 
