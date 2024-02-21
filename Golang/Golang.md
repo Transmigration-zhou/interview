@@ -53,6 +53,8 @@ for range的时候，地址并没有发生变化。在循环时，会创建一�
 
 原理：https://juejin.cn/post/6844903701576957960
 
+ps: 1.22的时候已经修复
+
 ### 5. defer
 
 https://blog.csdn.net/Cassie_zkq/article/details/108567205
@@ -64,7 +66,7 @@ https://blog.csdn.net/Cassie_zkq/article/details/108567205
 
 #### defer特性
 
-1. 多个defer语句，按先进后出的方式执行
+1. 多个defer语句，按后进先出的方式执行
 
    所有的defer语句会放入栈中，在入栈的时候会进行相关的值拷贝（也就是下面的“对应的参数会实时解析”）。
 
@@ -78,7 +80,7 @@ https://blog.csdn.net/Cassie_zkq/article/details/108567205
    import "fmt"
    
    func test(a int) {//无返回值函数
-   	defer fmt.Println("1、a =", a) //方法
+   	defer fmt.Println("1、a =", a) //方法（值拷贝）
    	defer func(v int) {
            fmt.Println("2、a =", v)
        }(a) //有参函数
@@ -102,12 +104,18 @@ https://blog.csdn.net/Cassie_zkq/article/details/108567205
 
 4. 这些调用直到 return 前才被执。因此，可以用来做资源清理。
 
-   defer、return、返回值三者的执行逻辑应该是：
-   return最先执行，return负责将结果写入返回值中；
-   接着defer开始执行一些收尾工作；
-   最后函数携带**当前返回值**（可能和最初的返回值不相同）退出。
-
-   **有函数返回值的则return将结果写入返回值，defer进行收尾，可以看做 return最先执行，然后return将结果存入返回值，最后defer执行**
+   > https://juejin.cn/post/7095631673865273352
+   >
+   > return返回值的运行机制：return并非原子操作，共分为**赋值**、**返回值**两步操作。
+   >
+   > defer、return、返回值三者的执行逻辑应该是：
+   > return最先执行，return负责将结果写入返回值中（即赋值）；
+   > 接着defer开始执行一些收尾工作；
+   > 最后函数携带**当前返回值**（可能和最初的返回值不相同）退出。
+   >
+   > 无名返回值会执行一个类似创建一个临时变量作为保存return值的动作
+   >
+   > 有名返回值的函数，由于返回值在函数定义的时候已经将该变量进行定义，在执行return的时候会先执行返回值保存操作，而后续的defer函数会改变这个返回值(虽然defer是在return之后执行的，但是由于使用的函数定义的变量，所以执行defer操作后对该变量的修改会影响到return的值。
 
 5. defer可以修改函数最终返回值，修改时机：有名返回值或者函数返回指针
 
@@ -267,6 +275,32 @@ import : 由 runtime 初始化每个导入的包，初始化顺序不是按照�
 
 
 
+### 12. 哪些类型不可以作为字典的键类型？
+
+切片Slice、映射Map、函数类型Function以及包含不可比较类型的结构体。
+
+
+
+### 13. struct 能不能比较？
+
+https://juejin.cn/post/6881912621616857102
+
+- 同一个 struct 的两个实例可比较也不可比较。当结构包含==Slice，Map，Function==不可直接比较成员变量时不可直接比较（==），但是可以借助 `reflect.DeepEqual` 函数来对两个变量进行比较。
+- 两个不同的 struct 的实例可比较也不可比较。可以通过强制转换来比较。如果成员变量中含有不可比较成员变量，即使可以强制转换，也不可以比较。
+
+
+
+### 14. select
+
+1. `select` 语句只能用于通道操作，用于在多个通道之间进行选择，以监听通道的就绪状态，而不是用于其他类型的条件判断。
+2. `select` 语句可以包含多个 `case` 子句，每个 `case` 子句对应一个通道操作。当其中任意一个通道就绪时，相应的 `case` 子句会被执行。
+3. 如果多个通道都已经就绪，`select` 语句会随机选择一个通道来执行。这样确保了多个通道之间的公平竞争。
+4. `select` 语句的执行可能是阻塞的，也可能是非阻塞的。如果没有任何一个通道就绪且没有默认的 `default` 子句，`select` 语句会阻塞，直到有一个通道就绪。如果有 `default` 子句，且没有任何通道就绪，那么 `select` 语句会执行 `default` 子句，从而避免阻塞。
+
+用途：多路复用、非阻塞通信、超时处理` case <-time.After(3 * time.Second)`
+
+
+
 ## 底层数据结构
 
 ### 1. Slice
@@ -276,6 +310,18 @@ import : 由 runtime 初始化每个导入的包，初始化顺序不是按照�
 https://zhuanlan.zhihu.com/p/449851884
 
 切片的本质就是对底层数组的封装，它包含了三个信息：底层数组的指针、切片的长度（len）和切片的容量（cap）。
+
+切片的长度（len）就是它所包含的元素个数。
+
+切片的容量（cap）是从它的第一个元素开始数，到其底层数组元素末尾的个数。
+
+> 我们可以把容量当做成**总长度减去左指针走过的元素值**，比如：
+>
+> cap(s) = 6
+>
+> s[:0] ——> cap = 6 - 0 =6
+>
+> s[2:] ——> cap = 6 - 2 = 4
 
 slice底层结构并没有使用加锁的方式，不支持并发读写，不是线程安全的。
 
@@ -831,7 +877,7 @@ https://learnku.com/articles/41728
 
 
 
-##### goroutine调度流程
+##### goroutine 调度流程
 
 ![img](https://image-1302243118.cos.ap-beijing.myqcloud.com/img/ddyl519.jpg)
 
@@ -845,7 +891,7 @@ https://learnku.com/articles/41728
 
 
 
-#### goroutine发生重新调度的场景：
+#### goroutine 发生重新调度的场景：
 
 - 阻塞 I/O
 - select操作
@@ -883,28 +929,14 @@ type Context interface {
 - `Deadline`返回绑定当前`context`的任务被取消的截止时间；如果没有设定期限，将返回`ok == false`。
 - `Done` 当绑定当前`context`的任务被取消时，将返回一个关闭的`channel`；如果当前`context`不会被取消，将返回`nil`。
 - `Err` 如果`Done`返回的`channel`没有关闭，将返回`nil`;如果`Done`返回的`channel`已经关闭，将返回非空的值表示任务结束的原因。如果是`context`被取消，`Err`将返回`Canceled`；如果是`context`超时，`Err`将返回`DeadlineExceeded`。
-- `Value` 返回`context`存储的键值对中当前`key`对应的值，如果没有对应的`key`,则返回`nil`。
+- `Value` 返回`context`存储的键值对中当前`key`对应的值，如果没有对应的`key`，则返回`nil`。
 
-#### emptyCtx
+![img](https://static.cyub.vip/images/202009/context_implement.jpg)
 
-`emptyCtx`是一个`int`类型的变量，但实现了`context`的接口。`emptyCtx`没有超时时间，不能取消，也不能存储任何额外信息，所以`emptyCtx`用来作为`context`树的根节点。
+| 类型      | 创建方法                     | 功能                                                         |
+| --------- | ---------------------------- | ------------------------------------------------------------ |
+| emptyCtx  | Background()/TODO()          | 用做 context 树的根节点。一般情况下，会使用 `Background()` 作为根 ctx，然后在其基础上再派生出子 ctx。要是不确定使用哪个 ctx，就使用 `TODO()`。 |
+| cancelCtx | WithCancel()                 | 可取消的 context。当调用返回的 `cancel` 函数或关闭父上下文的 `Done` 通道时，返回的 `ctx` 的 `Done` 通道将关闭。 |
+| timerCtx  | WithDeadline()/WithTimeout() | 可取消的 context，过期或超时会自动取消。当截止时间到期、调用返回的取消函数时或当父上下文的 `Done` 通道关闭时，返回的上下文的 `Done` 通道将关闭。 |
+| valueCtx  | WithValue()                  | 可存储共享信息的context                                      |
 
-#### valueCtx
-
-`valueCtx`利用一个`Context`类型的变量来表示父节点`context`，所以当前`context`继承了父`context`的所有信息；`valueCtx`类型还携带一组键值对，也就是说这种`context`可以携带额外的信息。`valueCtx`实现了`Value`方法，用以在`context`链路上获取`key`对应的值，如果当前`context`上不存在需要的`key`,会沿着`context`链向上寻找`key`对应的值，直到根节点。
-
-`WithValue`用以向`context`添加键值对。
-
-#### cancelCtx
-
-跟`valueCtx`类似，`cancelCtx`中也有一个`context`变量作为父节点；变量`done`表示一个`channel`，用来表示传递关闭信号；`children`表示一个`map`，存储了当前`context`节点下的子节点；`err`用于存储错误信息表示任务结束的原因。
-
-`WithCancel`函数用来创建一个可取消的`context`，即`cancelCtx`类型的`context`。
-
-#### timerCtx
-
-`timerCtx`是一种基于`cancelCtx`的`context`类型，从字面上就能看出，这是一种可以定时取消的`context`。
-
-`WithDeadline`返回一个基于`parent`的可取消的`context`，并且其过期时间`deadline`不晚于所设置时间`d`。
-
-与`WithDeadline`类似，`WithTimeout`也是创建一个定时取消的`context`，只不过`WithDeadline`是接收一个过期时间点，而`WithTimeout`接收一个相对当前时间的过期时长`timeout`。
