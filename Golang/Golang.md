@@ -253,15 +253,15 @@ func main() {
 #### 场景
 
 - channel 如果忘记初始化，那么无论你是读，还是写操作，都会造成阻塞。 
-- channel 发送数量 超过 channel接收数量，就会造成阻塞
-- channel 接收数量 超过 channel发送数量，也会造成阻塞
+- channel 发送数量 超过 channel 接收数量，就会造成阻塞
+- channel 接收数量 超过 channel 发送数量，也会造成阻塞
 - http request body未关闭，goroutine不会退出
 - 互斥锁忘记解锁
-- sync.WaitGroup使用不当
+- sync.WaitGroup 使用不当，wg.Add 与 wg.Done 数量不匹配
 
 #### 排查
 
-单个函数：调用 `runtime.NumGoroutine` 方法来打印 执行代码前后Goroutine 的运行数量，进行前后比较，就能知道有没有泄露了。
+单个函数：调用 `runtime.NumGoroutine` 方法来打印 执行代码前后 Goroutine 的运行数量，进行前后比较，就能知道有没有泄露了。
 
 生产/测试环境：使用`PProf`实时监测Goroutine的数量。
 
@@ -402,6 +402,8 @@ for i := 0; i < 10000; i++ {
    > 值类型的数据，默认赋值操作都是深拷贝。
    >
    > 引用类型的数据，默认全部都是浅拷贝。
+   
+3. 切片不支持比较操作，数组内元素类型能比较就支持比较操作
 
 #### 内存泄漏
 
