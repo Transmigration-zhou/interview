@@ -11,7 +11,7 @@
 
 不同点：
 
-1. new 对指针类型分配内存，并且内存对应的值为类型零值，返回值是分配类型的指针
+1. new 创建一个指定类型的指针，并且内存对应的值为类型零值，返回值是分配类型的指针
 2. make 用于 slice、map和 channel 的初始化，返回值为引用类型本身，而不是指针
 3. new 分配的空间被清零，make 分配空间后，会进行初始化
 
@@ -44,6 +44,10 @@ Go语言中所有的传参都是值传递（传值），都是一个副本，一
 > 所谓值类型：变量和变量的值存在同一个位置。
 >
 > 所谓引用类型：变量和变量的值是不同的位置，变量的值存储的是对值的引用。
+
+#### 什么情况下传入函数的切片更改不会影响到外部？
+
+如果指向底层数组的指针被覆盖或者修改（copy、重分配、append触发扩容），此时函数内部对数据的修改将不再影响到外部的切片，代表长度的len和容量cap也均不会被修改。
 
 ### 4. for range 的时候它的地址会发生变化么？
 
@@ -184,8 +188,8 @@ rune等同于**int32**，主要用于表示一个字符类型大于一个字节�
 原因：
 
 - 字符串在 Go 语言中是不可变类型，占用内存大小是固定的
-- 使用 +。每次都会重新分配内存
-- strings.Builder，bytes.Buffer 底层都是[]byte 数组
+- 使用 + 每次都会重新分配内存
+- strings.Builder，bytes.Buffer 底层都是 []byte
 - 内存扩容策略，不需要每次拼接重新分配内存
 
 
@@ -240,15 +244,15 @@ func main() {
 
 
 
-### 10. goroutine 内存泄漏
+### 10. goroutine 内存泄漏（协程泄露）
 
 #### 原因
 
-- Goroutine 内进行channel/mutex 等读写操作被一直阻塞。 
+- Goroutine 内进行 channel/mutex 等读写操作被一直阻塞。 
 
 - Goroutine 内的业务逻辑进入死循环，资源一直无法释放。 
 
-- Goroutine 内的业务逻辑进入长时间等待，有不断新增的 Goroutine 进入等待
+- Goroutine 内的业务逻辑进入长时间等待，有不断新增的 Goroutine 进入等待。
 
 #### 场景
 
@@ -264,6 +268,13 @@ func main() {
 单个函数：调用 `runtime.NumGoroutine` 方法来打印 执行代码前后 Goroutine 的运行数量，进行前后比较，就能知道有没有泄露了。
 
 生产/测试环境：使用`PProf`实时监测Goroutine的数量。
+
+#### 解决协程泄露的常见方式
+
+如协程会无限地向通道`ch`发送数据，这个协程永远不会退出，导致了协程泄露。
+
+- 使用带超时的操作，比如`select`语句配合`time.After`。
+- 使用context包来传递取消信号。
 
 
 
@@ -298,6 +309,188 @@ https://juejin.cn/post/6881912621616857102
 4. `select` 语句的执行可能是阻塞的，也可能是非阻塞的。如果没有任何一个通道就绪且没有默认的 `default` 子句，`select` 语句会阻塞，直到有一个通道就绪。如果有 `default` 子句，且没有任何通道就绪，那么 `select` 语句会执行 `default` 子句，从而避免阻塞。
 
 用途：多路复用、非阻塞通信、超时处理` case <-time.After(3 * time.Second)`
+
+
+
+### 15. go语言的锁有几种类型？
+
+1. 互斥锁（sync.Mutex）
+2. 读写锁（sync.RWMutex）
+3. 等待组（sync.Waitgroup）
+4. 一次性锁（sync.Once）
+5. 条件变量（sync.Cond）
+6. 原子操作（sync/atomic）
+
+
+
+## Goroutine
+
+goroutine 是由 Go 运行时（runtime）管理的协程（用户态的轻量级线程），而不是操作系统管理。
+
+相比较于操作系统线程，goroutine 的资源占用和使用代价都要小得多，可以创建几十个、几百个甚至成千上万个goroutine 也不会造成系统资源的枯竭，Go 的运行时负责对 goroutine 进行管理。
+
+goroutine 本身只是一个数据结构，真正让 goroutine 运行起来的是**调度器**。
+
+Go 实现了一个用户态的调度器（GMP模型）
+
+### GMP模型
+
+属于是多对多模型
+
+https://learnku.com/articles/41728
+
+- G：goroutine协程，使用go关键字可以创建一个golang协程。
+
+- M：thread线程，协程必须放在线程上执行。
+
+- P：processor处理器，包含运行Go代码的必要资源，也有调度goroutine的能力，最多有 GOMAXPROCS 个。
+
+  ==选择待执行G，井调度到线程M上执行。==
+
+  ==M必须拥有P，才能执行G中的代码，P负责G的调度。==
+
+引入 P 的原因是：GM 模型 M 获取 G 时都要加锁，会因为频繁加锁解锁而发生等待，影响程序并发性能。
+
+M 与 P 是一对一的关系，P 与 G 则是一对多的关系。
+
+<img src="https://www.liwenzhou.com/images/Go/concurrence/gpm.png" alt="gpm" style="zoom: 67%;" />
+
+> ##### goroutine 调度流程
+>
+> 全局队列：存放等待运行的 G。
+>
+> P 的本地队列：存放等待运行的G，数量不超过256个。新建 G 时，G 优先加入到 P 的本地队列，
+>
+> 新建一个 goroutine 的时候，优先放到 P 的本地队列中，如果本地队列满了会批量移动部分 G 到全局队列。
+> 当 P 的本地队列为空时，M 也会尝试从全局队列拿一些 G 放到 P 的本地队列 。
+>
+> M：线程想运行任务就得获取 P，从 P 的本地队列获取 G，P 队列为空时，M 也会尝试从全局队列拿一批 G 放到 P 的本地队列，或从其他 P 的本地队列偷一半放到自己 P 的本地队列。M 运行 G，G 执行之后，M 会从 P 获取下一个 G，不断重复下去。（==work stealing 机制==）
+>
+> 当 线程 M 执行某一个 G 时候如果发生了阻塞操作，释放绑定的 P，把 P 转移给其他空闲的 M 执行（没有空闲的 M 就会创建一个新的线程）。（==hand off 机制==）
+>
+> 当 M 调用结束时候，这个 G 会尝试获取一个空闲的 P ，并放入到这个 P 的本地队列。如果获取不到 P，那么这个线程 M 变成休眠状态， 加入到空闲线程中，然后这个 G 会被放入全局队列中。
+>
+> 
+>
+> 一个 P 最多包含 257 个 G ：本地队列 runq（256个）+优先级最高 runnext（1个）
+>
+> runnext：一个 P 如果还有剩余时间片，那么 P 中runnext字段中的goroutine会继承这部分剩余时间并执行。
+
+![img](https://image-1302243118.cos.ap-beijing.myqcloud.com/img/ddyl519.jpg)
+
+**如果一个P上的G超过了257个咋办？**
+
+如果一个P上的G超过257个，就会将超过部分放到全局队列上 ，全局队列是一个链表，无限长。
+
+
+
+**如果一个P上的所有G执行完了咋办？**
+
+`runtime.findrunnable() `
+
+1. 如果P的runnext存在有就用这个G【==不加锁==】
+2. 从P的本地队列中顺序拿一下G【 ==不加锁==】
+3. 从全局队列中拿一个G【==加锁==】，顺便从全局队列拿出128（不足128就给全部）个G给这个P
+4. 从netpoll网络轮询器中拿一个G，剩下的通过 injectglist 放到全局队列中【==加锁==】
+5. 随机从其他的P的本地队列中偷一半给当前P
+6. 将P设置为空闲状态并且将M从P中拿下来，但是不会kill M
+
+
+
+#### GMP 的 G 有哪些状态
+
+Goroutine 在 Go 运行时（runtime）系统中可以有以下 9 种状态：
+
+1. Gidle：Goroutine 处于空闲状态，即没有被创建或者被回收
+2. ==Grunnable==：Goroutine 已经准备就绪，可以被调度器调度执行，但是还未被选中执行
+3. ==Grunning==：Goroutine 正在执行中，被赋予了M和P的资源
+4. ==Gsyscall==：Goroutine 发起了系统调用，进入系统调用阻塞状态
+5. ==Gwaiting==：Goroutine 被阻塞等待某个事件的发生，比如等待 I/O、等待锁、等待 channel 等
+6. Gscan：GC正在扫描栈空间
+7. Gdead：没有正在执行的用户代码
+8. Gcopystack：栈正在被拷贝，没有正在执行的代码
+9. ==Gpreempted==：Goroutine 被**抢占**，即在运行过程中被调度器中断，等待重新唤醒
+
+对应操作系统中三大进程状态
+
+- 就绪态：Grunnable
+- 运行态：Grunning
+- 等待态：Gwaiting、Gsyscall、Gpreempted
+
+![img](http://www.uml.org.cn/j2ee/images/20220429466.jpg)
+
+
+
+#### 调度时机（什么时候进行切换/执行）
+
+https://juejin.cn/post/7330052230472663055
+
+- 主动调度（协作式调度）：业务程序主动调用 runtime.Gosched 函数让出 CPU 而产生的调度
+
+  > 1. 将 G 状态从 Grunning（运行态） 切换为 Grunnable（就绪态）；
+  > 2. 释放 M 当前运行的 G；
+  > 3. 将 G 放入全局运行队列 sched.runq；
+  > 4. 调用 schedule 函数获取 G 进行调度
+
+- 被动调度：G 执行业务代码时，因条件不满足需要等待，而发生的调度
+
+  - 等待接收 channel 数据，但 channel 又没有数据的时候，就会发生 G 阻塞
+
+- 抢占式调度：由于 sysmon 检测 G 运行时间太长(比如sleep，死循环)或长时间处于系统调用之中，被调度器剥夺运行权，从而发生的调度。
+
+  - **基于协作的抢占式调度**
+    - 针对 g 运行时间太长（一般是 10ms）的情况，retake 会设置抢占标志
+    - 当发生==函数调用==时，会检查抢占标记，如果有抢占标记就会触发抢占让出cpu
+    - 只在有函数调用的地方才能插入“抢占”代码，死循环并没有给编译器插入抢占代码的机会
+  - **基于信号的抢占式调度**（异步抢占）
+    - 针对 g 运行时间太长（一般是 10ms）的情况，retake 会在支持异步抢占的系统内，直接发送信号给 M，M 收到信号后实施异步抢占
+    - 解决由密集循环导致的无法抢占的问题
+
+  
+
+#### 调度遇到阻塞的情况
+
+Goroutine 阻塞一般有：系统调用（syscall），网络IO，协程挂起，执行计算四种。
+
+- **系统调用（syscall）**：G会阻塞内核线程M，此时M运行着G先跟P分离，P寻找其他空闲的M进行绑定；等G的系统调用完成后，G将重新分配到全局队列，M也会继续寻找绑定空闲的P。 ==被动调度==
+
+- **网络IO**：网络轮询器（NetPoller）来处理网络请求和 IO 操作的问题，其后台通过 kqueue（MacOS），epoll（Linux）或 iocp（Windows）来实现 IO 多路复用。不会导致M被阻塞，仅阻塞G。 ==被动调度==
+
+- **协程挂起**：当G遇到channel阻塞，sleep等阻塞后，G将挂起，不阻塞M，挂起完成过后才会放到队列里面，等待P的分配。 ==被动调度==
+
+- **执行计算**：当G遇到执行程序比较长时，超过10ms后会让出CPU执行权，回到队列等待，不阻塞M。 ==抢占式调度==
+
+
+
+### 调度器的生命周期
+
+![17-pic-go调度器生命周期.png](https://gitee.com/Transmigration_zhou/pic/raw/master/j37FX8nek9.png!large)
+
+> M0 : 启动后编号为0的主线程，这个M对应的实例会在全局变量runtime.m0中，不需要在heap上分配，==M0负责执行初始化操作和启动第一个协程G，之后M0便和普通M一样。==
+>
+> G0：每次启动一个M都会第一个创建的goroutine，==G0仅负责调度G，G0不会被调度程序抢占，每个M都有一个自己的G0。==在调度或系统调用时会使用G0的栈空间，全局变量的G0是M0的G0。
+
+
+
+### goroutine 发生重新调度的场景
+
+- 阻塞 I/O
+- select操作
+- 阻塞在channel
+- 等待锁
+- 主动调用 runtime.Gosched()
+
+
+
+### goroutine 的抢占式调度
+
+https://jingwei.link/2019/05/26/golang-routine-scheduler.html
+
+goroutine通过**抢占机制**来打断长时间占用 CPU 资源的 goroutine ，发起重新调度。
+
+**抢占机制**：Golang 运行时（runtime）中的系统监控线程 sysmon 可以找出“长时间占用”的 goroutine，从而“提醒”相应的 goroutine 该中断了。
+
+
 
 
 
@@ -638,67 +831,6 @@ channel 也分为双向通道和单向通道。
 - 控制并发数
 
   `var limit = make(chan struct{}, 3)`
-  
-  - ```go
-    func main() {
-    	var wg sync.WaitGroup
-  
-    	sem := make(chan struct{}, 2) // 最多允许2个并发同时执行
-    	taskNum := 10
-    
-    	for i := 0; i < taskNum; i++ {
-    		wg.Add(1)
-    		sem <- struct{}{} // 获取信号
-    		go func(id int) {
-    			defer wg.Done()
-    
-    			defer func() { <-sem }() // 释放信号
-    
-    			// do something for task
-    			time.Sleep(time.Second * 2)
-    			fmt.Println(id, time.Now())
-    		}(i)
-    	}
-    	wg.Wait()
-    }
-    ```
-    
-  - ```go
-    // runDynamicTask 
-    // 最大同时运行maxTaskNum个任务处理数据
-    // 自定义令牌池维持maxTaskNum个令牌供竞争
-    func runDynamicTask(dataChan <-chan int, maxTaskNum int) {
-      // 初始化令牌池
-      tokenPool := make(chan struct{}, maxTaskNum)
-      for i := 0; i < maxTaskNum; i++ {
-          tokenPool <- struct{}{}
-      }
-    
-      var wg sync.WaitGroup
-    
-      for data := range dataChan {
-          // 先获取令牌，如果被消费完则阻塞等待其它任务返还令牌
-          <-tokenPool
-    
-          wg.Add(1)
-          go func(data int) {
-              defer wg.Done()
-    
-              // 任务运行完成，返还令牌
-              defer func() {
-                  tokenPool <- struct{}{}
-              }()
-    
-              // do something
-              time.Sleep(3 * time.Second)
-              fmt.Println(data, time.Now())
-          }(data)
-      }
-    
-      wg.Wait()
-    }
-    ```
-
 #### 线程安全
 
 channel的底层实现中，hchan结构体中采用Mutex锁来保证数据读写安全。在对循环数组buf中的数据进行入队和出队操作时，必须先获取互斥锁，才能操作channel数据。
@@ -731,7 +863,7 @@ go引入了channel和goroutine实现CSP模型，将生产者和消费者进行�
 
 ### 4. Mutex
 
-Go sync包提供了两种锁类型：互斥锁sync.Mutex 和 读写互斥锁sync.RWMutex，都属于悲观锁。
+Go sync包提供了两种锁类型：互斥锁 sync.Mutex 和读写互斥锁 sync.RWMutex，都属于悲观锁。
 
 ```GO
 type Mutex struct {  
@@ -749,6 +881,26 @@ sema表示信号量，mutex阻塞队列的定位是通过这个变量来实现�
 - 重复 Unlock() 会导致 panic 
 - 使用 Lock() 加锁后，再次 Lock() 会导致死锁
 - 锁定状态与 goroutine 没有关联，一个 goroutine 可以 Lock，另一个 goroutine 可以 UnlockWaitGroup
+
+#### Mutex模式
+
+- 正常模式(非公平锁) 
+
+  - 在正常模式下，一个尝试加锁的 goroutine 先通过自旋的方式尝试通过原子操作获取锁，如果几次自旋之后仍然不能获得锁，则插入到队列的尾部排队等待。
+  - 所有的等待者按照先入先出的顺序排队，当锁被释放，被唤醒的 goroutine 并不会直接拥有锁，而是要和处于自旋阶段，尚未排队等待的 goroutine 进行竞争。这些 新来的 goroutine 更有优势，因为它们正在 CPU 中运行，而且它们的数量可以有很多，而被唤醒的 goroutine 只有一个，所以被唤醒的 goroutine 很大概率拿不到锁，这中情况它会被插入到队列的头部。
+  - 当一个 goroutine 等待锁时间超过 1 ms 时，这个 Mutex 就进入到了饥饿模式。(==正常锁-->饥饿锁触发条件==)
+
+  优点：高吞吐量
+
+  缺点：尾端延迟（队列尾部的 goroutine 长时间抢不到锁）
+
+- 饥饿模式(公平锁)
+
+  - 在饥饿模式下，Mutex 的拥有者将直接把锁交给队列最前面的等待者。新来的 goroutine 不会自旋，也不会尝试获取锁，它们会直接插入到等待队列的尾部。
+  - 恢复正常模式的条件（满足其一）：
+
+    1. 这个等待者的等待时间小于1ms
+    2. 这个等待者是最后一个等待者，等待队列已经空了，后面没有饥饿的 goroutine
 
 #### 加解锁过程
 
@@ -796,124 +948,203 @@ func (m *Mutex) Unlock() {
 4. 有空闲的 P。
 5. 当前 goroutine 所挂载的 P 下，本地待运行队列为空。
 
-#### Mutex模式
-
-- 正常模式(非公平锁)
-
-  该模式下，协程如果加锁不成功不会立即转入阻塞排队，而是判断是否满足自旋的条件，如果满足则会启动自旋过程，尝试抢锁。唤醒的goroutine 不会直接拥有锁，而是会和新请求锁的 goroutine 竞争锁。新请求锁的 goroutine 具有优势：它正在 CPU 上执行，而且可能有好几个，所以刚刚唤醒的 goroutine 有很大可能在锁竞争中失败，长时间获取不到锁，就会切换到饥饿模式。
-
-- 饥饿模式(公平锁)
-
-  当一个 goroutine 等待锁时间超过 1 毫秒时，它可能会遇到饥饿问题。
-
-  处于饥饿模式下，不会启动自旋过程，也即一旦有协程释放了锁，那么一定会唤醒协程，被唤醒的协程将会成功获取锁，同时也会把等待计数减1。
-
-恢复正常模式的条件：
-
-1. G的执行时间小于1ms
-2. 等待队列已经全部清空了
 
 
+### 5. RWMutex
 
-### 5. Goroutine
+RWMutex 也称为读写互斥锁，读写互斥锁就是读取/写入互相排斥的锁。它可以由任意数量的读取操作的 goroutine 或单个写入操作的 goroutine 持有。读写互斥锁 `RWMutex` 类型有五个方法，`Lock`，`Unlock`，`Rlock`，`RUnlock` 和 `RLocker`。其中，RLocker 返回一个 Locker 接口，该接口通过调用 `rw.RLock` 和 `rw.RUnlock` 来实现 Lock 和 Unlock 方法。
 
-goroutine是由Go运行时（runtime）管理的协程（用户态的轻量级线程），而不是操作系统管理。
+相比互斥锁，读写互斥锁在高并发读的场景下可以提高并发性能，但在高并发写的场景下仍然存在性能瓶颈。
 
-相比较于操作系统线程，goroutine的资源占用和使用代价都要小得多，可以创建几十个、几百个甚至成千上万个goroutine也不会造成系统资源的枯竭，Go的运行时负责对goroutine进行管理。
+#### 实现原理
 
-goroutine 本身只是一个数据结构，真正让 goroutine 运行起来的是**调度器**。
+RWMutex 通过 readerCount 的正负来判断当前是处于读锁占有还是写锁占有，负数则代表当前正在进行写锁占有。
 
-Go 实现了一个用户态的调度器（GMP模型）
+当有一个写锁的时候，会将读锁数量设置为负数 1<<30，目的是让新进入的读锁等待写锁之后释放通知读锁。
 
-#### GMP模型
+在处于写锁占有状态后，会将此时的 readerCount 赋值给 readerWait，表示要等前面 readerWait 个读锁释放完才算完整的占有写锁，才能进行后面的独占操作。
 
-https://learnku.com/articles/41728
+读锁释放的时候， 会对 readerWait 对应减一，直到为 0 值，就可以唤起写锁了。
 
-- G：goroutine协程，使用go关键字可以创建一个golang协程。
-
-- M：thread线程，协程必须放在线程上执行。
-
-- P：processor处理器，包含运行Go代码的必要资源，也有调度goroutine的能力，最多有 GOMAXPROCS 个。
-
-  ==选择待执行G，井调度到线程M上执行。==
-
-  ==M必须拥有P，才能执行G中的代码，P负责G的调度。==
-
-引入P的原因是：GM模型M获取G时都要加锁，会因为频繁加锁解锁而发生等待，影响程序并发性能。
-
-<img src="https://www.liwenzhou.com/images/Go/concurrence/gpm.png" alt="gpm" style="zoom: 67%;" />
-
-> 全局队列：存放等待运行的 G。
->
-> P 的本地队列：存放等待运行的G，数量不超过256个。新建 G 时，G 优先加入到 P 的本地队列，
->
-> 新建一个goroutine的时候，优先放到P的本地队列中，如果本地队列满了会批量移动部分 G 到全局队列。
-> 当P的本地队列为空时，M也会尝试从全局队列拿一些G放到P的本地队列 。
->
-> M：线程想运行任务就得获取 P，从 P 的本地队列获取 G，P 队列为空时，M 也会尝试从全局队列拿一批 G 放到 P 的本地队列，或从其他 P 的本地队列偷一半放到自己 P 的本地队列。M 运行 G，G 执行之后，M 会从 P 获取下一个 G，不断重复下去。
->
-> 当 M 调用结束时候，这个 G 会尝试获取一个空闲的 P ，并放入到这个 P 的本地队列。如果获取不到 P，那么这个线程 M 变成休眠状态， 加入到空闲线程中，然后这个 G 会被放入全局队列中。
->
-> 一个P最多包含257个G：本地队列runq（256个）+优先级最高runnext（1个）
->
-> runnext：一个P如果还有剩余时间片，那么P中runnext字段中的goroutine会继承这部分剩余时间并执行。
+并且在写锁占有后，即时有新的读操作加进来， 也不会影响到 readerWait 值了，只会影响总的读锁数目：readerCount。
 
 
 
- **如果一个P上的G超过了257个咋办？**
+### 6. WaitGroup
 
-如果一个P上的G超过257个，就会将超过部分放到全局队列上 ，全局队列是一个链表，无限长。
+WaitGroup 解决的就是并发-等待的问题，用于等待一组 goroutine 的完成。
 
+#### 用法
 
+- `Add(delta int)`：向计数器添加值（delta 为负数表示减去相应值）
+- `Done()`：减少计数器的值，相当于 Add(-1)
+- `Wait()`：阻塞调用它的 goroutine，直到计数器的值变为0
 
-**如果一个P上的所有G执行完了咋办？**
+#### 实现原理
 
-`runtime.findrunnable() `
-
-1. 如果P的runnext存在有就用这个G【==不加锁==】
-2. 从P的本地队列中顺序拿一下G【 ==不加锁==】
-3. 从全局队列中拿一个G【==加锁==】，顺便从全局队列拿出128（不足128就给全部）个G给这个P
-4. 从netpoll网络轮询器中拿一个G，剩下的通过 injectglist 放到全局队列中【==加锁==】
-5. 随机从其他的P的本地队列中偷一半给当前P
-6. 将P设置为空闲状态并且将M从P中拿下来，但是不会kill M
-
-
-
-##### goroutine 调度流程
-
-![img](https://image-1302243118.cos.ap-beijing.myqcloud.com/img/ddyl519.jpg)
-
-#### 调度器的生命周期
-
-![17-pic-go调度器生命周期.png](https://gitee.com/Transmigration_zhou/pic/raw/master/j37FX8nek9.png!large)
-
-> M0 : 启动后编号为0的主线程，这个M对应的实例会在全局变量runtime.m0中，不需要在heap上分配，==M0负责执行初始化操作和启动第一个协程G，之后M0便和普通M一样。==
->
-> G0：每次启动一个M都会第一个创建的goroutine，==G0仅负责调度G，G0不会被调度程序抢占，每个M都有一个自己的G0。==在调度或系统调用时会使用G0的栈空间，全局变量的G0是M0的G0。
+- WaitGroup 主要维护了 2 个计数器，一个是请求计数器 counter，一个是等待计数器 waiter count，二者组成一个 64bit 的值（state），请求计数器占高 32bit，等待计数器占低 32bit。
+  - counter：当前还未执行结束的 goroutine 计数器
+  - waiter count：有多少个协程调用了 Wait 方法在等待所有的 counter 执行完毕，即有多少个等候者
+- 每次 Add 修改请求计数器的值（v），当 v 等于 0 时，释放waiter的数量。
+- Wait 主要有两个作用：1. 累加 waiter count 2. 阻塞等待信号量
 
 
 
-#### goroutine 发生重新调度的场景：
+### 7. Cond
 
-- 阻塞 I/O
-- select操作
-- 阻塞在channel
-- 等待锁
-- 主动调用 runtime.Gosched()
+和 WaitGroup 相反，要求一组子协程等待主协达到某个状态时才继续运行。
+
+#### 用法
+
+- Wait：会把当前协程放入Cond 的等待队列中并阻塞，直到被 Signal 或者 Broadcast 方法从等待队列中移除并唤醒，用于子协程阻塞。
+  - Wait 内部会先调用`c.L.Unlock()`，所以调用 Wait 函数前==需要先加锁==
+  - 由于 Wait 函数被唤醒时存在虚假唤醒等情况，导致唤醒后条件依然不成立，因此需要使用 for 语句循环进行等待，知道条件成立为止。
+- Signal：主协程唤醒等待队列中的==一个==子协程，先唤醒最先阻塞的子协程，被唤醒的子协程继续执行。
+- Broadcast：主协程唤醒等待队列中的==全部==协程，所有子协程继续执行。
+
+```go
+package main
+
+import (
+	"fmt"
+	"sync"
+	"time"
+)
+
+var start = false
+var done = false
+
+func main() {
+	wg := sync.WaitGroup{}
+	wg.Add(10)
+	m := &sync.Mutex{}
+	c := sync.NewCond(m)
+	for i := 0; i < 10; i++ {
+		go Soldiers(i, c, &wg)
+	}
+	go Waiter(c)
+	Officer(c)
+	wg.Wait()
+	fmt.Println("所有大兵干完饭")
+
+	CleanUp(c)
+	time.Sleep(3 * time.Second)
+	fmt.Println("打扫结束")
+
+}
+
+func CleanUp(c *sync.Cond) {
+	c.L.Lock()
+	done = true
+	c.L.Unlock()
+	c.Signal()
+}
+
+func Officer(c *sync.Cond) {
+	fmt.Printf("长官准备中....\n")
+	time.Sleep(time.Second * 5)
+	c.L.Lock()
+	start = true
+	c.L.Unlock()
+	// 唤醒所有的等待线程
+	c.Broadcast()
+}
+
+func Soldiers(i int, c *sync.Cond, wg *sync.WaitGroup) {
+	defer wg.Done()
+	c.L.Lock()
+	fmt.Printf("大兵%d号等待干饭....\n", i)
+	for !start {
+		// wait 解锁lock 同时挂起goroutine
+		// 当wait的goroutine被唤醒的时候，会重新将锁加上
+		c.Wait()
+	}
+	fmt.Printf("大兵%d号开始干饭....\n", i)
+	c.L.Unlock()
+
+}
+
+func Waiter(c *sync.Cond) {
+	c.L.Lock()
+	for !done {
+		c.Wait()
+	}
+	fmt.Println("用餐结束，开始打扫....")
+	c.L.Unlock()
+	return
+}
+```
 
 
 
-#### goroutine 的抢占式调度
+### 8. sync.Once
 
-https://jingwei.link/2019/05/26/golang-routine-scheduler.html
+Once 可以用来执行且仅仅执行一次动作，常常用于单例对象的初始化场景，或者并发访问只需初始化一次的共享资源，或者在测试的时候初始化一次测试资源。
 
-goroutine通过**抢占机制**来打断长时间占用 CPU 资源的 goroutine ，发起重新调度。
+Once 只暴露了一个方法 Do，你可以多次调用 Do 方法，但是只有第 一次调用 Do 方法时 f 参数才会执行，这里的 f 是一个无参数无返回值的函数。
 
-**抢占机制**：Golang 运行时（runtime）中的系统监控线程 sysmon 可以找出“长时间占用”的 goroutine，从而“提醒”相应的 goroutine 该中断了。
+```go
+var (
+    goInstance *Instance
+    once       sync.Once
+)
+
+// 单例模式
+func GoInstance(name string) *Instance {
+    if goInstance == nil {
+        once.Do(func() {
+            goInstance = &Instance{
+                Name: name,
+            }
+        })
+    }
+    return goInstance
+}
+```
 
 
 
-### 6. Context
+### 9. sync.Pool
+
+sync.Pool 是一个临时对象存储池。
+
+它可以缓存对象暂时不用但是之后会用到的对象，并且不需要重新分配内存。这在很大程度上降低了`GC`的压力，并且提高了程序的性能。
+
+sync.Pool 获取对象的顺序是不确定的，并不保证对象的获取顺序与放入池中的顺序一致。
+
+#### 用法
+
+```go
+type Person struct {
+    Name string
+}
+
+var personalPool = sync.Pool{
+    New: func() interface{} {
+        return &Person{}
+    },
+}
+
+func main() {
+    newPerson := personalPool.Get().(*Person)
+    newPerson.Name = "Jack"
+    personalPool.Put(newPerson)
+}
+```
+
+#### 原理 
+
+sync.Pool有两个容器来存储对象，分别是：local 和 victim。
+
+每次垃圾回收的时候，在 victim 中的对象会被清理掉，而在 local中的对象会被移动 victim 当中，并把 local 设置为空。
+
+新对象是放在 local 当中的，调用`pool.Put`也是将对象放在 local 当中的。
+
+调用`pool.Get`时，会先从 victim 中获取，如果没有找到，则就会从 local 中获取，如果 local 中也没有，就会执行初始化时的 New Function，否则就返回 nil。
+
+
+
+### 10. Context
 
 context 主要用来在 goroutine 之间传递上下文信息，包括：取消信号、超时时间、截止时间、k-v 等。
 
@@ -941,4 +1172,115 @@ type Context interface {
 | cancelCtx | WithCancel()                 | 可取消的 context。当调用返回的 `cancel` 函数或关闭父上下文的 `Done` 通道时，返回的 `ctx` 的 `Done` 通道将关闭。 |
 | timerCtx  | WithDeadline()/WithTimeout() | 可取消的 context，过期或超时会自动取消。当截止时间到期、调用返回的取消函数时或当父上下文的 `Done` 通道关闭时，返回的上下文的 `Done` 通道将关闭。 |
 | valueCtx  | WithValue()                  | 可存储共享信息的context                                      |
+
+
+
+
+
+## 代码题
+
+### 控制并发数
+
+  ```go
+func main() {
+    var wg sync.WaitGroup
+
+    sem := make(chan struct{}, 2) // 最多允许2个并发同时执行
+    taskNum := 10
+
+    for i := 0; i < taskNum; i++ {
+        wg.Add(1)
+        sem <- struct{}{} // 获取信号
+        go func(id int) {
+            defer wg.Done()
+
+            defer func() { <-sem }() // 释放信号
+
+            // do something for task
+            time.Sleep(time.Second * 2)
+            fmt.Println(id, time.Now())
+        }(i)
+    }
+    wg.Wait()
+}
+  ```
+
+  ```go
+// runDynamicTask 
+// 最大同时运行maxTaskNum个任务处理数据
+// 自定义令牌池维持maxTaskNum个令牌供竞争
+func runDynamicTask(dataChan <-chan int, maxTaskNum int) {
+    // 初始化令牌池
+    tokenPool := make(chan struct{}, maxTaskNum)
+    for i := 0; i < maxTaskNum; i++ {
+        tokenPool <- struct{}{}
+    }
+
+    var wg sync.WaitGroup
+
+    for data := range dataChan {
+        // 先获取令牌，如果被消费完则阻塞等待其它任务返还令牌
+        <-tokenPool
+
+        wg.Add(1)
+        go func(data int) {
+            defer wg.Done()
+
+            // 任务运行完成，返还令牌
+            defer func() {
+                tokenPool <- struct{}{}
+            }()
+
+            // do something
+            time.Sleep(3 * time.Second)
+            fmt.Println(data, time.Now())
+        }(data)
+    }
+
+    wg.Wait()
+}
+  ```
+
+#### 协程池
+
+```go
+type Pool struct {
+	job chan func()
+	sem chan struct{}
+}
+
+func NewPool(size int) *Pool {
+	return &Pool{
+		job: make(chan func(), size),
+		sem: make(chan struct{}, size),
+	}
+}
+
+func (p *Pool) NewJob(f func()) {
+	select {
+	case p.sem <- struct{}{}:
+		go func() {
+			p.Work(f)
+		}()
+	case p.job <- f:
+	}
+}
+
+func (p *Pool) Work(f func()) {
+	defer func() {
+		fmt.Println("finish work")
+		<-p.sem
+	}()
+
+	for {
+		f()
+		f = <-p.job
+	}
+
+	//f()
+	//for task := range p.job {
+	//	task()
+	//}
+}
+```
 

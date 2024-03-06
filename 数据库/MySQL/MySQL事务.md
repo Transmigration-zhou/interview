@@ -158,8 +158,8 @@ https://time.geekbang.org/column/article/319988
 
 ![img](https://gitee.com/Transmigration_zhou/pic/raw/master/img/20220303182428.png)
 
-- 未提交读（read uncommitted）：指一个事务还没提交时，它做的变更就能被其他事务看到。
-- 已提交读（read committed）：指一个事务提交之后，它做的变更才能被其他事务看到，总是读取最新版本的。
+- 读未提交（read uncommitted）：指一个事务还没提交时，它做的变更就能被其他事务看到。
+- 读已提交（read committed）：指一个事务提交之后，它做的变更才能被其他事务看到，总是读取最新版本的。
 - 可重复读（repeatable read）：指一个事务执行过程中看到的数据，一直跟这个事务启动时看到的数据是一致的。==MySQL 的默认隔离级别==
 - 串行化（序列化 serializable）：会对记录加上==读写锁==，在多个事务对这条记录进行读写操作时，如果发生了读写冲突的时候，后访问的事务必须等前一个事务执行完成，才能继续执行。（事务串行化顺序执行）
 
@@ -168,6 +168,8 @@ https://time.geekbang.org/column/article/319988
 不过要解决幻读现象不建议将隔离级别升级到「串行化」，因为这样会导致数据库在并发事务时性能很差（加锁）。
 
 MySQL 的默认隔离级别虽然是「可重复读」，但是它通过Next-Key Locks（行锁和间隙锁的组合）来锁住记录之间的“间隙”和记录本身，防止其他事务在这个记录之间插入新的记录，这样就避免了幻读现象。
+
+读未提交适合对数据的实时性要求不高，高并发的情况。
 
 ### 为什么隔离级别越高，性能越差？
 
@@ -205,7 +207,7 @@ MySQL 的默认隔离级别虽然是「可重复读」，但是它通过Next-Key
 
 对于「未提交读」隔离级别的事务来说，因为可以读到未提交事务修改的数据，所以直接读取最新的数据就好了；
 对于「串行化」隔离级别的事务来说，通过加读写锁的方式来避免并行访问；
-对于「提交读」和「可重复读」隔离级别的事务来说，它们是通过Read View 来实现的，它们的区别在于创建 Read View 的时机不同，大家可以把 ReadView理解成一个数据快照，就像相机拍照那样，定格某一时刻的风景。「读提交」隔离级别是在「每个语句执行前」都会重新生成一个 Read View，而「可重复读」隔离级别是「启动事务时」生成一个 ReadView，然后整个事务期间都在用这个ReadView。
+对于「提交读」和「可重复读」隔离级别的事务来说，它们是通过ReadView 来实现的，它们的区别在于创建 ReadView 的时机不同，大家可以把 ReadView 理解成一个数据快照，就像相机拍照那样，定格某一时刻的风景。「读提交」隔离级别是在「每个语句执行前」都会重新生成一个 ReadView，而「可重复读」隔离级别是「启动事务时」生成一个 ReadView，然后整个事务期间都在用这个ReadView。
 
 ---
 
@@ -298,6 +300,32 @@ MVCC，即**Multi-Version Concurrency Control **。MVCC 是一种读取优化策
 
 
 
+### 如何解决幻读问题？
+
+https://blog.csdn.net/qq_39999478/article/details/131386669
+
+ 1. 对于快照读（普通 select 查询语句）：可重复读隔离级是由 MVCC（多版本并发控制）实现的，实现的方式是启动事务后，在执行第一个查询语句后，会创建一个 Read View，后续的查询语句利用这个 Read View，通过这个 Read View 就可以在 undo log 版本链找到事务开始时的数据，所以事务过程中每次查询的数据都是一样的，即使中途有其他事务插入了新纪录，是查询不出来这条数据的，所以就很好了避免幻读问题。
+ 2. 对于当前读（select ... for update 等增删改语句）：每次都会查到最新的记录，引入间隙锁解决该问题（比如表中有一个范围id为（3,5）间隙锁，那么其他事务就无法插入id=4这条记录了）。
+ 是通过 next-key lock（记录锁+间隙锁）方式解决了幻读，因为当执行 select ... for update 语句的时候，会加上 next-key lock，如果有其他事务在 next-key lock 锁范围内插入了一条记录，那么这个插入语句就会被阻塞，无法成功插入，所以就很好了避免幻读问题。
+
+MySQL 可重复读隔离级别并没有彻底解决幻读，只是很大程度上避免了幻读现象的发生。下面是两个发生幻读场景的例子：
+
+- 第一个例子：对于快照读， MVCC 并不能完全避免幻读现象。因为当事务 A 更新了一条事务 B 插入的记录，那么事务 A 前后两次查询的记录条目就不一样了，所以就发生幻读。
+
+- 第二个例子：对于当前读，如果事务开启后，并没有执行当前读，而是先快照读，然后这期间如果其他事务插入了一条记录，那么事务后续使用当前读进行查询的时候，就会发现两次查询的记录条目就不一样了，所以就发生幻读。
+
+  - T1 时刻：事务 A 先执行「快照读语句」：select * from t_test where id > 100 得到了 3 条记录。
+
+  - T2 时刻：事务 B 往插入一个 id= 200 的记录并提交；
+
+  - T3 时刻：事务 A 再执行「当前读语句」 select * from t_test where id > 100 for update 就会得到 4 条记录，此时也发生了幻读现象。
+
+  - **要避免这类特殊场景下发生幻读的现象的话，就是尽量在开启事务之后，**
+
+    **马上执行 select ... for update 这类当前读的语句**，因为它会对记录加 next-key lock，
+
+    从而避免其他事务插入一条新记录
+
 ### MVCC实现原理
 
 - 隐式字段
@@ -330,35 +358,52 @@ readview就是事务在使用MVCC机制进行快照读操作时产生的读视�
 
 #### readview的组成
 
-- creator_trx_id：创建这个Read View的事务ID。
+- creator_trx_id：创建这个Read View的事务id。
   - **只有在对表中的记录做改动时（执行INSERT、DELETE、UPDATE这些语句时）才会为事务分配事务id，否则在一个只读事务中的事务id值都默认为0。**
-- trx_ids：表示在生成ReadView时当前系统中活跃的读写事务的事务id列表 。
-- up_limit_id：活跃的事务中最小的事务ID（trx_ids中最小值）。
-- low_limit_id：表示生成ReadView时系统中应该分配给下一个事务的id值。（系统中最大的事务id加上1就是low_limit_id）
-  - **low_limit_id并不是trx_ids中的最大值，事务id是递增分配的。比如，现在有id为1，2，3这三个事务，之后id为3的事务提交了。那么一个新的读事务在生成ReadView时，trx_ids就包括1和2，up_limit_id的值就是1，low_limit_id的值就是4。**
+- m_ids：表示在生成ReadView时当前系统中活跃的读写事务的事务id列表 （即所有没有提交的事务）。
+- min_trx_id：活跃的事务中最小的事务id（m_ids中最小值）。
+- max_trx_id：表示生成ReadView时系统中应该分配给下一个事务的id值。（系统中最大的事务id加上1就是low_limit_id）
+  - **max_trx_id并不是m_ids中的最大值+1，事务id是递增分配的。比如，现在有id为1，2，3这三个事务，之后id为3的事务提交了。那么一个新的读事务在生成ReadView时，m_ids就包括1和2，min_trx_id的值就是1，max_trx_id的值就是4。**
+
+![image-20240227024629281](C:\Users\gxy\AppData\Roaming\Typora\typora-user-images\image-20240227024629281.png)
 
 #### readview的规则
 
-这样在访问某条记录时，只需要按照下边的步骤判断记录的某个版本是否可见：
+https://www.bilibili.com/video/BV1YD4y1J7Qq/?vd_source=cdd4a93b6fb630a59f5f39b8c5ab8b44
+
+这样在访问某条记录时，只需要依次按照下边的步骤判断记录的某个版本是否可见：
 
 - 如果被访问版本的trx_id属性值与ReadView中的creator_trx_id值相同，意味着当前事务在访问它自己修改过的记录，所以该版本可以被当前事务访问。
-- 如果被访问版本的trx_id属性值小于ReadView中的up_limit_id值，表明生成该版本的事务在当前事务生成ReadView前已经提交，所以该版本可以被当前事务访问。
-- 如果被访问版本的trx_id属性值大于或等于ReadView中的low_limit_id值，表明生成该版本的事务在当前事务生成ReadView后才开启，所以该版本不可以被当前事务访问。
-- 如果被访问版本的trx_id属性值在ReadView的up_limit_id和low_limit_id之间，那就需要判断一下trx_id属性值是不是在trx_ids列表中：
+- 如果被访问版本的trx_id属性值小于ReadView中的min_trx_id值，表明生成该版本的事务在当前事务生成ReadView前已经提交，所以该版本可以被当前事务访问。
+- 如果被访问版本的trx_id属性值大于或等于ReadView中的max_trx_id值，表明生成该版本的事务在当前事务生成ReadView后才开启，所以该版本不可以被当前事务访问。
+- 如果被访问版本的trx_id属性值在ReadView的min_trx_id和max_trx_id之间，那就需要判断一下trx_id属性值是不是在m_ids列表中：
   - 如果在，说明创建ReadView时生成该版本的事务还是活跃的，该版本不可以被访问。
   - 如果不在，说明创建ReadView时生成该版本的事务已经被提交，该版本可以被访问。
 
+##### mysql如何解决不可重复读的问题？
 
+通过MVCC，在RR隔离级别下，每次事务开始后创建的Read View，在整个事务运行过程中不会改变，每次查数据的时候，发现数据的隐藏列trx_id大于Read View中的事务id，就会根据指针找到前一个快照，直到快照数据的trx_id小于等于Read View的事务id。
 
-### readview的生成时机
+#### readview的生成时机
 
-- READ COMMITTD：在每一次进行普通SELECT操作前都会生成一个ReadView
+- 读已提交：在每一次进行普通SELECT操作前都会生成一个ReadView
 
   ![img](https://img2022.cnblogs.com/blog/2345397/202203/2345397-20220312171523870-977119429.png)
 
-- REPEATABLE READ：只在第一次进行普通SELECT操作前生成一个ReadView，之后的查询操作都重复使用第一次的ReadView就好了。
+- 可重复读：只在第一次进行普通SELECT操作前生成一个ReadView，之后的查询操作都重复使用第一次的ReadView就好了。
 
   ![img](https://img2022.cnblogs.com/blog/2345397/202203/2345397-20220312171536091-647209377.png)
+
+### MVCC具体执行步骤
+
+ 1. 当事务中出现select语句时，会先根据MySQL的当前情况生成一个ReadView；
+ 2. 获取表中行数据的隐藏列，判断当前的查询事务能不能访问最新版本的数据；
+ 3. 如果能，则取当前表中的数据返回，否则就去Undo-log中获取旧版本的数据返回；
+ 4. 如果是新增数据，查询旧版本数据为空，那就意味着该数据对事务不可见，查询结果中不会包含这条记录。
+
+ 注意：
+ 1. 在RC隔离级别下：一个事务内，每条select语句都会生成一个ReadView；
+ 2. 在RR隔离级别下：一个事务内，只有第一条select语句会生成ReadView，后面的select语句公用该ReadView。
 
 
 
