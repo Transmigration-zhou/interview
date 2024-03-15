@@ -109,9 +109,19 @@ https://blog.csdn.net/weixin_39573535/article/details/109959710
 |   归并排序   |    O($nlogn$)    |    O($nlogn$)    |    O($nlogn$)    |      O($n$)      |  稳定  |
 |   基数排序   |   O(d($n+r$))    |   O(d($n+r$))    |   O(d($n+r$))    |    O($n+rd$)     |  稳定  |
 
-### 希尔排序
+### 希尔排序（缩小增量排序）
+
+1. **先**–对已有的数列进行分组，明确增量；
+2. **中**–每个分组使用直接插入排序进行位置交换；
+3. **后**–将每个分组执行直接插入排序后的结果在进行直接插入排序；
 
 ![fig](https://gitee.com/Transmigration_zhou/pic/raw/master/img/20220125030458.png)
+
+### 基数排序
+
+![img](https://img-blog.csdnimg.cn/f254d3bf02844dc1a91e682437f9d5ca.webp)
+
+
 
 ### 简单介绍一下快排的原理。什么情况下是性能是最差的
 
@@ -134,6 +144,194 @@ https://blog.csdn.net/weixin_39573535/article/details/109959710
 快速排序：是先找到分割的标志来将数组进行大致的切割（标志的左边都是小于标志的值，右边都是大于标志的值），然后再进行递归
 
 ![img](https://gitee.com/Transmigration_zhou/pic/raw/master/img/20220125033447.png)
+
+### 堆排序的基本思路
+
+1. 将无需序列构建成一个二叉树，根据升序降序需求选择大顶堆或小顶堆**（一般升序采用大顶堆，降序采用小顶堆)**
+2. 遍历二叉树的非叶子节点**自下往上**的构造大顶堆，针对每个非叶子节点，都跟它的左右子节点比较，把最大的值换到这个子树的父节点。
+3. 将堆顶元素与末尾元素交换，将最大元素"沉"到数组末端
+4. 重新调整结构，使其满足堆定义，然后继续交换堆顶元素与当前末尾元素，反复执行调整+交换步骤，直到整个序列有序
+
+
+
+### 代码
+
+#### 堆排序
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+type Heap struct {
+	arr  []int
+	size int
+}
+
+func (h Heap) heap(u int) {
+	l, r := 2*u+1, 2*u+2
+	max := u
+	if l < h.size && h.arr[max] < h.arr[l] {
+		max = l
+	}
+	if r < h.size && h.arr[max] < h.arr[r] {
+		max = r
+	}
+	if max != u {
+		h.arr[max], h.arr[u] = h.arr[u], h.arr[max]
+		h.heap(max)
+	}
+}
+
+func main() {
+	var n int
+	fmt.Scanln(&n)
+	a := make([]int, n)
+	for i := 0; i < n; i++ {
+		fmt.Scanf("%d", &a[i])
+	}
+	a = heapSort(a)
+	for _, v := range a {
+		fmt.Printf("%d ", v)
+	}
+}
+
+func heapSort(a []int) []int {
+	h := Heap{
+		arr:  a,
+		size: len(a),
+	}
+	for i := h.size / 2 - 1; i >= 0; i-- { // 从非叶子节点开始倒序遍历
+		h.heap(i)
+	}
+	for h.size > 0 {
+		h.arr[0], h.arr[h.size-1] = h.arr[h.size-1], h.arr[0]
+		h.size--
+		h.heap(0)
+	}
+	return h.arr
+}
+```
+
+#### 快速排序
+
+```go
+package main
+
+import (
+	"fmt"
+	"math/rand"
+	"time"
+)
+
+func main() {
+    rand.Seed(time.Now().UnixNano())
+	var n int
+	fmt.Scanln(&n)
+	a := make([]int, n)
+	for i := 0; i < n; i++ {
+		fmt.Scanf("%d", &a[i])
+	}
+	quickSort(a, 0, n-1)
+	for _, v := range a {
+		fmt.Printf("%d ", v)
+	}
+}
+
+func quickSort(a []int, l int, r int) {
+	if l >= r {
+		return
+	}
+	mid := partition(a, l, r)
+	quickSort(a, l, mid-1)
+	quickSort(a, mid+1, r)
+}
+
+func partition(a []int, l int, r int) int {
+    pos := rand.Intn(r-l) +  l
+	a[l], a[pos] = a[pos], a[l]
+	tmp := a[l]
+	for l < r {
+		for l < r && a[r] >= tmp {
+			r--
+		}
+		a[l] = a[r]
+		for l < r && a[l] <= tmp {
+			l++
+		}
+		a[r] = a[l]
+	}
+	a[l] = tmp
+	return l
+}
+```
+
+#### 归并排序
+
+```go
+package main
+
+import (
+	"fmt"
+	"math/rand"
+	"time"
+)
+
+func main() {
+	rand.Seed(time.Now().UnixNano())
+	var n int
+	fmt.Scanln(&n)
+	a := make([]int, n)
+	for i := 0; i < n; i++ {
+		fmt.Scanf("%d", &a[i])
+	}
+	a = mergeSort(a)
+	for _, v := range a {
+		fmt.Printf("%d ", v)
+	}
+}
+
+func mergeSort(a []int) []int {
+	if len(a) <= 1 {
+		return a
+	}
+	mid := len(a) / 2
+	l, r := mergeSort(a[:mid]), mergeSort(a[mid:])
+	return merge(l, r)
+}
+
+func merge(a []int, b []int) []int {
+	res := make([]int, len(a)+len(b))
+	i, j, k := 0, 0, 0
+	for i < len(a) && j < len(b) {
+		if a[i] <= b[j] {
+			res[k] = a[i]
+			i++
+		} else {
+			res[k] = b[j]
+			j++
+		}
+		k++
+	}
+	for i < len(a) {
+		res[k] = a[i]
+		i++
+		k++
+	}
+	for j < len(b) {
+		res[k] = b[j]
+		j++
+		k++
+	}
+	return res
+}
+```
+
+
+
+
 
 ## 树
 
