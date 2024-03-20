@@ -88,10 +88,10 @@ create view 视图名 as 查询语句;
 
 ## 4. undo log，redo log，binlog
 
-- undo log：引擎层日志，记录的是数据的逻辑变化。例如，对于每个UPDATE语句，对应一条相反的UPDATE的 undo log。
+- undo log：引擎层日志，记录的是数据的逻辑变化。例如，对于每个UPDATE语句，对应一条相反的UPDATE的 undo log。==实现事物的原子性。==
   - 适用场景：事务回滚、MVCC；
 
-- redo log：引擎层日志，保证对于已经COMMIT的事务产生的数据变更，即使是系统宕机崩溃也可以通过它来进行数据重做，被修改的数据页为脏页，修改会被记录到redo log中。redo log是循环写，日志空间大小固定，会覆盖。
+- redo log：引擎层日志，保证对于已经COMMIT的事务产生的数据变更，即使是系统宕机崩溃也可以通过它来进行数据重做，被修改的数据页为脏页，修改会被记录到redo log中。redo log是循环写，日志空间大小固定，会覆盖。==实现事物的持久性。==
   - 适用场景：崩溃恢复（crash-safe）
 
 - binlog：应用层日志，记录了对MySQL数据库执行更改的所有的写操作（SQL语句），与 redo log 不同，binlog 是追加写，是指一份写到一定大小的时候会更换下一个文件，不会覆盖。主要用于：
@@ -312,7 +312,7 @@ redo log是存储引擎层的日志，而server层的通用日志为binlog。
 
     那么binlog中记录的是偏向逻辑层面的记录：如：对xxx表中的id=yyy的行做做了什么修改，更改后的值是什么。
 
-    binlog不会记录你的 select 、show这类的操作。
+    binlog不会记录你的 select 、show 这类的操作。
 
 - redo log 是循环写的，空间固定会用完，binlog 是可以追加写入的。“追加写” 是指 binlog 文件写到一定大小后会切换到下一个，并不会覆盖以前的日志。
 
@@ -519,3 +519,21 @@ https://www.imooc.com/article/43345
 
 
 
+## 12. 给你10个数据库服务器，每个只能接500的qps，现在要实现4000qps，要怎么做？
+
+- 主从数据库：使用 binlog 来同步主数据库的更改到从数据库。
+- 使用负载均衡：在数据库前设置负载均衡，使得读请求平均分配到从数据库。
+
+> 负载均衡算法：随机、轮询、权重轮询、一致性哈希
+
+
+
+## 13. 查看 Mysql 的主从状态指令
+
+```mysql
+show slave status
+```
+
+1、Slave_IO_Running：指示复制 I/O 进程是否正在运行。如果值为 "Yes"，表示正常运行。
+2、Slave_SQL_Running：指示复制 SQL 进程是否正在运行。如果值为 "Yes"，表示正常运行。
+3、Seconds_Behind_Master：表示从服务器与主服务器之间的复制延迟（以秒为单位）。较小的延迟表示较好的主从同步。

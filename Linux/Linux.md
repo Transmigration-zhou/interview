@@ -8,7 +8,19 @@
 
 查看CPU负载：「top」
 
+查看CPU详细情况：「lscpu」
+
+查看CPU核数：「nproc」
+
 查看内存占用：「free」
+
+查看磁盘使用情况: 「df -h」
+
+查看磁盘 IO 情况：「iotop」
+
+查看网络 IO 情况：「iftop」
+
+查看网络的连通性：「ping」「netcat(nc)」
 
 「netstat」通常用来查询系统的网络套接字连接情况
 
@@ -82,4 +94,37 @@ cat access.log | awk '{print $1}' | sort | uniq -c | sort -nr | head -10
   ```shell
   ps -ef | grep {进程id}
   ```
+
+## 5. 统计日志文件中ERROR出现的次数
+
+```shell
+grep "ERROR“ xxx.log | wc -l
+```
+
+> wc -c filename：显示一个文件的字节数
+> wc -m filename：显示一个文件的字符数
+> wc -l filename：显示一个文件的行数
+> wc -L filename：显示一个文件中的最长行的长度
+> wc -w filename：显示一个文件的字数
+
+## 6. chmod 权限控制
+
+chmod u=权限,g=权限,o=权限 file
+
+u 表示该档案的拥有者，g 表示与该档案的拥有者属于同一个群体(group)者，o 表示其他以外的人，a 表示所有（包含上面三者）。
+
++表示增加指定权限，-表示取消指定权限。，=表示设置指定权限，覆盖原有的权限。
+
+r=4，w=2，x=1 。此时其他的权限组合也可以用其他的八进制数字表示出来，如： rwx = 4 + 2 + 1 = 7 rw = 4 + 2 = 6 rx = 4 +1 = 5
+
+```shell
+# 设置所有人可以读写及执行
+chmod 777 file
+chmod u=rwx,g=rwx,o=rwx file
+chmod a=rwx file
+# 设置拥有者可读写，其他人不可读写执行
+chmod 600 file
+chmod u=rw,g=---,o=--- file
+chmod u=rw,go-rwx file
+```
 
