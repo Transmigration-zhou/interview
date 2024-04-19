@@ -20,6 +20,8 @@
 
 查看网络 IO 情况：「iftop」
 
+查看当前IP地址：「ifconfig 」
+
 查看网络的连通性：「ping」「netcat(nc)」
 
 「netstat」通常用来查询系统的网络套接字连接情况
@@ -126,5 +128,11 @@ chmod a=rwx file
 chmod 600 file
 chmod u=rw,g=---,o=--- file
 chmod u=rw,go-rwx file
+```
+
+## 7. 查看某个端口的连接数
+
+```shell
+netstat -n | grep 80 | wc -l
 ```
 
