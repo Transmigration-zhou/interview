@@ -89,6 +89,7 @@ cat access.log | awk '{print $1}' | sort | uniq -c | sort -nr | head -10
 
   ```shell
   netstat -tunlp | grep {进程端口号}
+  lsof -i:{端口}
   ```
 
 - 根据进程id查看进程信息
