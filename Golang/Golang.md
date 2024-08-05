@@ -260,6 +260,10 @@ func main() {
 
 ### 11. goroutine 内存泄漏（协程泄露）
 
+> 一般我们常说的内存泄漏是指**堆内存的泄漏**。
+>
+> 堆内存是指程序从堆中分配的，大小任意的(内存块的大小可以在程序运行期决定)内存块，使用完后必须释放的内存。
+
 #### 原因
 
 - Goroutine 内进行 channel/mutex 等读写操作被一直阻塞。 
@@ -288,7 +292,6 @@ func main() {
 > - 使用 prometheus（普罗米修斯）+ grafana 平台对内存和CPU的监控
 > - 在代码中引入pprof，然后开启一个端口来监听http请求，设置handle为nil
 > - 使用go命令调用pprof工具来查看内存或cpu状态`go tool pprof http://localhost:6060/debug/pprof/heap`
-> - 
 
 #### 解决协程泄露的常见方式
 
